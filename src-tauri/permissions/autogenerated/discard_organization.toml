@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-discard-organization"
+description = "Enables the discard_organization command without any pre-configured scope."
+commands.allow = ["discard_organization"]
+
+[[permission]]
+identifier = "deny-discard-organization"
+description = "Denies the discard_organization command without any pre-configured scope."
+commands.deny = ["discard_organization"]

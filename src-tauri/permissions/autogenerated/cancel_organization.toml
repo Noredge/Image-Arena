@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-cancel-organization"
+description = "Enables the cancel_organization command without any pre-configured scope."
+commands.allow = ["cancel_organization"]
+
+[[permission]]
+identifier = "deny-cancel-organization"
+description = "Denies the cancel_organization command without any pre-configured scope."
+commands.deny = ["cancel_organization"]

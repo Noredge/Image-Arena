@@ -1,0 +1,47 @@
+/* UI text stays readable at Windows 100% scaling; decorative headings keep their style. */
+body { font-family: 'Segoe UI', 'Microsoft YaHei UI', 'Microsoft YaHei', sans-serif; }
+button.primary, button.secondary, button.quiet, .result-actions button { font-size: 14px; }
+.intro p, .result-heading p { font-size: 15px; line-height: 1.8; }
+.section-heading h2, .rank-label, .bracket-panel summary, .bracket-round h3,
+.bracket-match > div, .competition-picker span, .organizer label, .organizer > p,
+.organize-summary, .result-file strong, .result-row span { font-size: 14px; }
+.sticker, .section-heading > span, .prepare-footer, .battle-bottom, .inspect-hint,
+.contender-label > span, .contender-footer > span, .thumb-preview span,
+.result-file > span, .result-secondary > span, .result-secondary .quiet,
+.unselected summary, .unselected summary span, .unselected-grid span,
+.bracket-panel summary > span, .bracket-panel > p, .bracket-match b,
+.seat-title small, .seat-options button span, .custom-k, .start-area > span,
+.viewer-title span, .viewer-hint, .zoom-button, .inspect-controls button,
+.organizer small, .organizer details > summary, .destination p, .file-operation p,
+.file-operation > div > span, .journal-location, .journal-location p,
+.organize-warning, .file-lock-note { font-size: 13px; line-height: 1.6; }
+.steps > span { font-size: 13px; }
+.bracket-round { min-width: 220px; }
+.bracket-match > div { min-height: 46px; }
+.result-secondary { flex-wrap: wrap; padding: 10px 14px; gap: 10px 24px; }
+.sound-control, .sound-panel small { font-size: 13px; }
+.top-action .scene-motion-control, .top-action .theme-control, .sound-control > summary {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-height: 38px; padding: 8px 12px; font-size: 13px;
+  background: var(--surface); color: var(--text); white-space: nowrap;
+}
+.top-action .scene-motion-control:hover, .sound-control > summary:hover { background: var(--hover); }
+.sound-panel { width: 290px; }
+.directory-memory { margin-top: 12px; }
+@media (max-width: 1320px) { .topbar .steps { display: none; } }
+@media (max-width: 1050px) { .top-action .local-badge { display: none; } }
+@media (max-width: 720px) {
+  .topbar { padding-inline: 12px; gap: 8px; }
+  .top-action { min-width: 0; }
+  .top-action .scene-motion-control span, .top-action .theme-control span,
+  .sound-control > summary span { display: none; }
+  .top-action .scene-motion-control, .top-action .theme-control, .sound-control > summary { min-width: 34px; padding: 7px; }
+  .sound-panel { right: -80px; width: min(290px, calc(100vw - 24px)); }
+  .brand-icon { display: none; }
+  .brand { font-size: 15px; letter-spacing: 0; }
+  .top-action .quiet { font-size: 12px; padding: 4px; }
+  .intro p, .result-heading p { font-size: 14px; }
+  .rank-label, .result-file strong { font-size: 13px; }
+  .zoom-button { font-size: 0; }
+  .viewer-tools button { font-size: 12px; }
+}

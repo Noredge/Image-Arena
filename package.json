@@ -1,0 +1,37 @@
+{
+  "name": "image-arena",
+  "private": true,
+  "version": "1.0.0",
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "dev": "vite --host 127.0.0.1 --port 5173 --strictPort",
+    "preview": "vite preview --host 127.0.0.1 --port 4173 --strictPort",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:fixtures": "node scripts/create-test-images.mjs",
+    "build": "tsc --noEmit && vite build",
+    "dev:desktop-ui": "vite --mode desktop --host 127.0.0.1 --port 5174 --strictPort",
+    "build:desktop-ui": "tsc --noEmit && vite build --mode desktop --outDir desktop-dist",
+    "desktop:dev": "node scripts/desktop.mjs dev",
+    "desktop:build": "node scripts/desktop.mjs build --no-bundle -- --locked",
+    "desktop:test": "node scripts/desktop.mjs test --locked"
+  },
+  "dependencies": {
+    "@tauri-apps/api": "2.11.1",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "2.11.5",
+    "@types/node": "^24.0.0",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "typescript": "^5.9.0",
+    "vite": "^8.0.0",
+    "vitest": "^4.0.0"
+  }
+}

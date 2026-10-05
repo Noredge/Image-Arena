@@ -1,0 +1,39 @@
+:root {
+  --bg: #f6f2e9; --surface: #f8f4ea; --paper: #f8f4eaf2; --wash: #f1ebde;
+  --hover: #ede8da; --border: #c5cab9; --text: #304c43; --muted: #5d6c59;
+  --accent: #e8cd96; --accent-ink: #795a33; --accent-border: #cdb581;
+  --active: #e6e3cf; --active-ink: #536a50; --active-border: #a1ad8f;
+  --coral: #c18c6b; --violet: #8ba890; --title-accent: #a87350;
+  --canvas: #dcdad4; --canvas-line: #c8c8bf; --frame: #c5c8bc;
+  --overlay: #f8f4eae8; --overlay-ink: #435349; --scrim: #242a26bc;
+  --left: #e7ceba; --left-hover: #eed8c6; --left-ink: #704f39; --left-line: #c6a990;
+  --right: #ceddc8; --right-hover: #dce7d5; --right-ink: #3e614b; --right-line: #a3b89e;
+  --gold-paper: #efe2bd; --green-paper: #e8edde; --bronze-paper: #eee0cf;
+  --error: #8b4b34; --error-bg: #f3e4d8; --error-border: #cda58d;
+  --shadow: #53604625; --scene-bg: #eee5d2; --scene-veil: #f4eddfe0; --scene-edge: #f4eddf10;
+  --scene-wall: #e4d4b2; --scene-wall-light: #eee0bf; --scene-lattice: #ced0ad; --scene-line: #9ca68d;
+  --scene-roof: #8eafa0; --scene-roof-line: #789382; --scene-roof-light: #aac1a6;
+  --scene-column: #c59a7d; --scene-trim: #ccb080; --scene-floor: #e4d7b6; --scene-stone: #c6bc9e;
+  --scene-garden: #aeb393; --scene-cloud: #fff5df; --scene-sun: #e7c179;
+  --wind-ink: #87977c; --leaf: #8b9b74; --leaf-warm: #bd9462;
+  --title-font: Georgia, "Noto Serif CJK SC", "Songti SC", SimSun, serif;
+}
+:root[data-theme="dark"] {
+  --bg: #252323; --surface: #302c2b; --paper: #302c2bf5; --wash: #332e2c;
+  --hover: #3d3531; --border: #534a43; --text: #e8e0d5; --muted: #b5a89e;
+  --accent: #d7b989; --accent-ink: #d7b989; --accent-border: #9f8663;
+  --active: #443a2e; --active-ink: #e5cca5; --active-border: #897459;
+  --coral: #c4917f; --violet: #93a0b9; --title-accent: #d7b989;
+  --canvas: #242424; --canvas-line: #393939; --frame: #4a4643;
+  --overlay: #302c2bef; --overlay-ink: #e8e0d5; --scrim: #121111e0;
+  --left: #513c37; --left-hover: #614842; --left-ink: #e5baa8; --left-line: #7a5e54;
+  --right: #3c414d; --right-hover: #474e5c; --right-ink: #bbc5de; --right-line: #606a7f;
+  --gold-paper: #42392b; --green-paper: #2f3540; --bronze-paper: #41322f;
+  --error: #e1ad8e; --error-bg: #48382d; --error-border: #8c6651;
+  --shadow: #0d0b0b60; --scene-bg: #252323; --scene-veil: #252323e8; --scene-edge: #25232330;
+  --scene-wall: #484342; --scene-wall-light: #544d47; --scene-lattice: #444244; --scene-line: #74685d;
+  --scene-roof: #45454b; --scene-roof-line: #686269; --scene-roof-light: #676164;
+  --scene-column: #765d50; --scene-trim: #9a8060; --scene-floor: #554f47; --scene-stone: #464240;
+  --scene-garden: #4d4846; --scene-cloud: #6d6660; --scene-sun: #d7b989;
+  --wind-ink: #9a8d7b; --leaf: #b6a084; --leaf-warm: #c0956b;
+}

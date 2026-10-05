@@ -1,0 +1,29 @@
+[package]
+name = "image-arena"
+version = "1.0.0"
+edition = "2021"
+license = "MIT"
+description = "Local image comparison tournament"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+uuid = { version = "1", features = ["v4"] }
+rfd = "0.17"
+arboard = { version = "3", default-features = false }
+sha2 = "0.10"
+windows-core = "0.61"
+windows = { version = "0.61", features = ["Win32_Foundation", "Win32_Storage_FileSystem", "Win32_System_Com", "Win32_UI_Shell", "Win32_UI_WindowsAndMessaging"] }
+
+[dev-dependencies]
+tempfile = "3"
+
+[profile.release]
+strip = true
+lto = true
+codegen-units = 1
+panic = "abort"

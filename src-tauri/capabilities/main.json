@@ -1,0 +1,14 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "main",
+  "description": "Only the local main window can use registered images and explicit native dialogs.",
+  "windows": ["main"],
+  "permissions": [
+    "allow-read-image-chunk",
+    "core:event:allow-listen", "core:event:allow-unlisten", "core:event:allow-emit",
+    "allow-load-settings", "allow-save-settings", "allow-pick-images", "allow-take-dropped-images", "allow-read-image",
+    "allow-release-images", "allow-set-import-enabled", "allow-copy-text",
+    "allow-save-record", "allow-close-app", "allow-pick-destination", "allow-remembered-destinations", "allow-prepare-organization",
+    "allow-execute-organization", "allow-discard-organization", "allow-cancel-organization", "allow-open-operation-records"
+  ]
+}

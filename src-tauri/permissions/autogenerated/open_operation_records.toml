@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-open-operation-records"
+description = "Enables the open_operation_records command without any pre-configured scope."
+commands.allow = ["open_operation_records"]
+
+[[permission]]
+identifier = "deny-open-operation-records"
+description = "Denies the open_operation_records command without any pre-configured scope."
+commands.deny = ["open_operation_records"]

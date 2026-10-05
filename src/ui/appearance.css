@@ -1,0 +1,133 @@
+/* One appearance layer for both modes. Images keep their original pixels. */
+html { color-scheme: light; }
+html[data-theme="dark"] { color-scheme: dark; }
+.topbar { background: var(--bg); border-color: var(--border); }
+.brand, .brand-icon { color: var(--text); }
+.brand-icon { border-color: var(--border); }
+.top-action { gap: 15px; align-items: center; }
+.theme-control { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 34px; padding: 6px 12px; border: 1px solid var(--border); border-radius: 99px; color: var(--text); background: var(--surface); font-size: 11px; white-space: nowrap; }
+.theme-control:hover { background: var(--hover); }
+.steps, .steps .done { color: var(--muted); }
+.steps i { background: var(--border); }
+.steps .current { color: var(--active-ink); background: var(--active); border-color: var(--border); }
+button.primary { background: var(--accent); color: #383529; border-color: var(--accent-border); box-shadow: 0 6px 14px -10px var(--shadow); }
+button.primary:hover:not(:disabled) { box-shadow: 0 8px 16px -10px var(--shadow); }
+button.secondary { background: var(--paper); border-color: var(--border); }
+button.secondary:hover:not(:disabled), button.quiet:hover:not(:disabled), .inspect-controls button:hover:not(:disabled), .zoom-button:hover:not(:disabled), .viewer-tools button:hover { background: var(--hover); }
+.intro h1 span, .result-heading h1 > span:not(.celebrate) { color: var(--title-accent); }
+.intro p, .section-heading > span, .prepare-footer, .battle-bottom, .battle-bottom > span, .contender-footer > span, .contender-label, .thumb-preview span, .unselected summary { color: var(--muted); }
+.sticker { background: var(--paper); border-color: var(--border); color: var(--muted); }
+.count { color: var(--active-ink); background: var(--active); }
+.drop-zone { background: var(--paper); border-color: var(--active-border); box-shadow: 0 10px 28px -25px var(--shadow); }
+.drop-zone:hover:not(:disabled), .drop-zone.dragging { background: var(--surface); border-color: var(--active-ink); }
+.upload-symbol { background: var(--wash); color: var(--active-ink); border-color: var(--border); }
+.setup-options { background: var(--paper); border-color: var(--border); box-shadow: 0 10px 28px -26px var(--shadow); }
+.seat-title { color: var(--accent-ink); }
+.seat-options button { background: var(--surface); border-color: var(--border); }
+.seat-options button.active { background: var(--active); color: var(--active-ink); border-color: var(--active-border); }
+.seat-options button.active span { color: var(--active-ink); }
+.custom-k input { background: var(--surface); border-color: var(--border); }
+.remove { color: var(--muted); background: var(--surface); border-color: var(--border); }
+.remove:hover:not(:disabled) { background: var(--left); }
+.scene-motion-control { color: var(--active-ink); background: var(--paper); border-color: var(--border); font-size: 11px; }
+.scene-motion-control:hover:not(:disabled) { background: var(--hover); }
+.battle-meta, .battle-bottom { background: var(--paper); }
+.contender-label b, .side-1 .contender-label b { color: var(--muted); border-color: var(--active-border); }
+.zoom-button { background: var(--paper); border-color: var(--border); }
+kbd { color: var(--muted); border-color: var(--border); }
+.inspect-controls .active { color: var(--active-ink); background: var(--active); border-color: var(--active-border); }
+.image-stage { border: 2px solid var(--frame); box-shadow: 0 5px 12px -9px var(--shadow); }
+.image-canvas, .result-image, .thumb-preview img, .unselected-grid img, .result-row img { background: var(--canvas); }
+.image-canvas { box-shadow: inset 0 0 0 1px var(--canvas-line); }
+.zoom-readout, .result-image > span { background: var(--overlay); color: var(--overlay-ink); border-color: var(--frame); }
+.image-loading { color: var(--muted); }
+.select-button { color: var(--left-ink); background: var(--left); border-color: var(--left-line); box-shadow: 0 3px 0 var(--left-line); }
+.side-1 .select-button { color: var(--right-ink); background: var(--right); border-color: var(--right-line); box-shadow: 0 3px 0 var(--right-line); }
+.select-button:hover:not(:disabled) { background: var(--left-hover); box-shadow: 0 4px 0 var(--left-line); }
+.side-1 .select-button:hover:not(:disabled) { background: var(--right-hover); box-shadow: 0 4px 0 var(--right-line); }
+.select-button kbd { background: transparent; border-color: currentColor; }
+.chosen .select-button { background: var(--active); color: var(--active-ink); border-color: var(--active-border); }
+.winner-flash { background: var(--surface); color: var(--active-ink); border-color: var(--active-border); box-shadow: 0 8px 24px -16px var(--shadow); }
+.vs { color: var(--muted); background: var(--wash); border-color: var(--border); outline-color: var(--scene-bg); }
+.podium-card { background: var(--green-paper); border-color: var(--right-line); box-shadow: 0 10px 23px -20px var(--shadow); }
+.podium-card.rank-1 { background: var(--gold-paper); border-color: var(--accent-border); }
+.podium-card.rank-3 { background: var(--bronze-paper); border-color: var(--left-line); }
+.rank-label { color: var(--right-ink); }
+.rank-3 .rank-label { color: var(--left-ink); }
+.result-secondary, .unselected { background: var(--paper); border-color: var(--border); }
+dialog { background: var(--surface); border-color: var(--border); }
+dialog::backdrop { background: var(--scrim); }
+.import-errors { background: var(--error-bg); border-color: var(--error-border); color: var(--error); }
+.load-error, .viewer-error { color: var(--error); }
+.toast { background: var(--surface); color: var(--text); border-color: var(--active-border); box-shadow: 0 8px 24px -17px var(--shadow); }
+
+/* The venue fills the window; the controls still have a comfortable reading width. */
+.arena-scene, .battle .arena-scene { position: fixed; inset: 76px 0 0; border: 0; border-radius: 0; box-shadow: none; background: var(--scene-bg); }
+.arena-scene > svg { opacity: .58; }
+.arena-scene::after { background: radial-gradient(ellipse at 50% 30%, var(--scene-veil) 8%, var(--scene-edge) 100%); }
+.battle .arena-scene > svg { opacity: .12; }
+.battle .arena-scene::after { background: var(--scene-veil); opacity: .45; }
+.prepare-main { max-width: 1320px; }
+.results-main { max-width: 1320px; }
+.podium-card { max-width: 350px; }
+.podium-card.rank-1 { max-width: 392px; }
+.result-image, .rank-1 .result-image { height: auto; aspect-ratio: 4 / 3; }
+.arena-moon { display: none; }
+[data-theme="dark"] .arena-sun { display: none; }
+[data-theme="dark"] .arena-moon { display: block; }
+
+/* Sparse breeze trails and leaves stay behind content, never over a photo. */
+.arena-breeze { position: absolute; inset: 0; overflow: hidden; z-index: 1; }
+.breeze-track { position: absolute; left: -180px; width: 150px; height: 65px; animation: breeze-cross 23s linear infinite; }
+.breeze-track:nth-child(1) { top: 20%; animation-delay: -9s; }
+.breeze-track:nth-child(2) { top: 73%; animation-delay: -17s; animation-duration: 29s; }
+.breeze-track:nth-child(3) { top: 89%; animation-delay: -4s; animation-duration: 26s; }
+.breeze-track svg { width: 100%; height: 100%; opacity: 1; fill: none; stroke: var(--wind-ink); stroke-width: 1.4; stroke-linecap: round; }
+.drifting-leaf { position: absolute; left: -55px; width: 28px; height: 22px; animation: leaf-cross 21s linear infinite; }
+.drifting-leaf:nth-of-type(4) { top: 31%; animation-delay: -5s; }
+.drifting-leaf:nth-of-type(5) { top: 63%; animation-delay: -12s; animation-duration: 27s; }
+.drifting-leaf:nth-of-type(6) { top: 83%; animation-delay: -2s; animation-duration: 23s; }
+.drifting-leaf:nth-of-type(7) { top: 48%; animation-delay: -16s; animation-duration: 31s; }
+.drifting-leaf svg { width: 100%; height: 100%; opacity: 1; fill: var(--leaf); stroke: var(--scene-bg); stroke-width: 1; animation: leaf-tumble 3.6s ease-in-out infinite alternate; }
+.drifting-leaf:nth-of-type(odd) svg { fill: var(--leaf-warm); animation-delay: -1.4s; }
+.arena-scene[data-motion="paused"] .breeze-track,
+.arena-scene[data-motion="paused"] .drifting-leaf,
+.arena-scene[data-motion="paused"] .drifting-leaf svg { animation-play-state: paused; }
+.battle .arena-breeze { visibility: hidden; }
+@keyframes breeze-cross {
+  0% { transform: translateX(0) translateY(8px); opacity: 0; }
+  10%, 85% { opacity: .55; }
+  50% { transform: translateX(calc(50vw + 180px)) translateY(-12px); }
+  100% { transform: translateX(calc(100vw + 360px)) translateY(4px); opacity: 0; }
+}
+@keyframes leaf-cross {
+  0% { transform: translateX(0) translateY(-8px); opacity: 0; }
+  8%, 88% { opacity: .8; }
+  35% { transform: translateX(calc(35vw + 35px)) translateY(28px); }
+  70% { transform: translateX(calc(70vw + 70px)) translateY(-20px); }
+  100% { transform: translateX(calc(100vw + 110px)) translateY(18px); opacity: 0; }
+}
+@keyframes leaf-tumble { from { transform: rotate(-25deg) scaleX(.65); } to { transform: rotate(45deg) scaleX(1); } }
+@media (min-width: 1900px) {
+  .prepare-main, .results-main { max-width: 1480px; }
+  .intro { margin-bottom: 35px; }
+  .podium-card { max-width: 390px; }.podium-card.rank-1 { max-width: 438px; }
+}
+@media (max-width: 1050px) {
+  .top-action { gap: 8px; }.top-action .local-badge { display: none; }
+  .steps > span { font-size: 10px; }
+}
+@media (max-width: 720px) {
+  .arena-scene, .battle .arena-scene { inset: 66px 0 0; }
+  .arena-scene > svg { opacity: .4; }
+  .battle .arena-scene > svg { opacity: .09; }
+  .theme-control { padding: 6px 9px; gap: 5px; font-size: 10px; }
+  .topbar { gap: 10px; }.top-action { gap: 6px; }
+  .result-image, .rank-1 .result-image { aspect-ratio: 3 / 4; }
+  .breeze-track { width: 105px; }
+  .drifting-leaf { width: 22px; }
+}
+@media (max-width: 360px) {
+  .brand-icon { display: none; }.brand { font-size: 15px; }
+}
+@media (prefers-reduced-motion: reduce) { .arena-breeze { display: none; } }

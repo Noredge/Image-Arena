@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-remembered-destinations"
+description = "Enables the remembered_destinations command without any pre-configured scope."
+commands.allow = ["remembered_destinations"]
+
+[[permission]]
+identifier = "deny-remembered-destinations"
+description = "Denies the remembered_destinations command without any pre-configured scope."
+commands.deny = ["remembered_destinations"]
