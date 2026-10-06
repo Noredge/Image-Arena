@@ -98,8 +98,9 @@ pub fn load_ui(file: &Path) -> UiSettings {
 }
 pub fn save_ui(file: &Path, values: serde_json::Value) -> Result<(), String> {
     let obj=values.as_object().ok_or("设置格式错误")?;
-    let allowed=["music","effects","volume","theme","motionPaused","mode","preferredK","linked","selectedAction","rejectedAction","conflict","showPreview"];
+    let allowed=["language","music","effects","volume","theme","motionPaused","mode","preferredK","linked","selectedAction","rejectedAction","conflict","showPreview"];
     if obj.keys().any(|k|!allowed.contains(&k.as_str())) {return Err("未知设置字段".into());}
+    if obj.get("language").is_some_and(|v| !matches!(v.as_str(), Some("zh") | Some("en"))) { return Err("设置格式错误".into()); }
     let bytes=serde_json::to_vec_pretty(&serde_json::json!({"version":1,"values":values})).map_err(|e|e.to_string())?;
     if bytes.len()>4096 {return Err("设置内容过大".into());}
     let parent=file.parent().ok_or("设置位置无效")?;fs::create_dir_all(parent).map_err(|e|e.to_string())?;
@@ -110,5 +111,14 @@ pub fn save_ui(file: &Path, values: serde_json::Value) -> Result<(), String> {
 #[cfg(test)]
 mod ui_tests {
  use super::*;
+ #[test] fn language_roundtrip_and_legacy_settings() {
+   let root=tempfile::tempdir().unwrap(); let file=root.path().join("settings.json");
+   save_ui(&file,serde_json::json!({"theme":"dark","volume":0})).unwrap();
+   let legacy=load_ui(&file).values.unwrap(); assert!(legacy.get("language").is_none());
+   save_ui(&file,serde_json::json!({"theme":"dark","volume":0,"language":"en"})).unwrap();
+   let restored=load_ui(&file).values.unwrap(); assert_eq!(restored["language"],"en"); assert_eq!(restored["volume"],0);
+   assert!(save_ui(&file,serde_json::json!({"language":"unknown"})).is_err());
+   assert_eq!(load_ui(&file).values.unwrap()["language"],"en");
+ }
  #[test] fn settings_survive_relocation_and_preserve_corruption(){let temp=tempfile::tempdir().unwrap();let file=temp.path().join("settings.json");assert!(load_ui(&file).values.is_none());save_ui(&file,serde_json::json!({"music":true,"volume":0,"theme":"dark","rejectedAction":"recycle"})).unwrap();assert_eq!(load_ui(&file).values.unwrap()["volume"],0);save_ui(&file,serde_json::json!({"volume":33})).unwrap();assert_eq!(load_ui(&file).values.unwrap()["volume"],33);fs::write(&file,"broken").unwrap();assert!(!load_ui(&file).warning.is_empty());assert_eq!(fs::read_dir(temp.path()).unwrap().count(),2);assert!(save_ui(&file,serde_json::json!({"recycleConfirmed":true})).is_err());}
 }

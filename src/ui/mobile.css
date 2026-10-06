@@ -51,6 +51,30 @@
 .compact .battle-meta strong { font-size:16px; }
 .compact .battle-meta .secondary { min-height:44px; padding:8px; font-size:12px; }
 .compact .battle-meta kbd { display:none; }
+.language-control { display:flex; align-items:center; gap:6px; font-size:12px; }
+.language-control select { min-height:36px; padding:4px 6px; max-width:110px; color:var(--ink); background:var(--surface); border:1px solid var(--border); border-radius:8px; }
+.compact .language-control { justify-content:space-between; min-height:44px; }
+.compact .language-control select { min-height:44px; }
+html[lang="en"] .competition-picker strong { line-height:1.25; }
+html[lang="en"] .contender-label > span { display:flex; align-items:center; gap:4px; flex-wrap:wrap; }
+html[lang="en"] .contender-label small { margin-left:0; }
+html[lang="en"] .app:not(.compact) .image-number-label { order:-1; }
+html[lang="en"] .topbar { gap:12px; }
+html[lang="en"] .brand { white-space:nowrap; flex-shrink:0; font-size:18px; letter-spacing:.2px; }
+html[lang="en"] .top-action { gap:8px; align-items:center; }
+html[lang="en"] .local-badge { max-width:130px; line-height:1.3; }
+@media (min-width:721px) and (max-width:1200px) {
+  html[lang="en"] .steps { display:none; }
+}
+html[lang="en"] .compact .contender-label { height:auto; min-height:28px; }
+html[lang="en"] .compact .contender-label small { font-size:10px; }
+html[lang="en"] .compact .contender .zoom-button { flex-shrink:0; }
+html[lang="en"] .compact .brand { font-size:15px; }
+html[lang="en"] .compact .battle-meta > span { display:flex; align-items:center; gap:3px; white-space:nowrap; font-size:10px; }
+html[lang="en"] .compact .mode-name { display:none; }
+html[lang="en"] .compact .stage-badge { font-size:10px; letter-spacing:0; text-transform:none; white-space:nowrap; }
+html[lang="en"] .compact .battle-heading h1 { white-space:normal; overflow:visible; font-size:18px; line-height:1.15; }
+html[lang="en"] .compact .mobile-vote { font-size:17px; gap:8px; padding:8px; white-space:nowrap; }
 .compact .contender-footer, .compact .vs, .compact.battle .veto-both { display:none; }
 .compact .inspect-toolbar { display:flex; flex-wrap:wrap; gap:4px; }
 .compact .inspect-hint { font-size:10px; }

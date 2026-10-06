@@ -1,19 +1,20 @@
 import { useSyncExternalStore } from 'react';
 import { isTauri, invoke } from '@tauri-apps/api/core';
 import { modes, type TournamentMode } from '../core/tournament';
-export type Settings={music:boolean;effects:boolean;volume:number;theme:'light'|'dark';motionPaused:boolean;mode:TournamentMode;preferredK:number;linked:boolean;selectedAction:'keep'|'move';rejectedAction:'keep'|'move'|'recycle';conflict:'rename'|'skip';showPreview:boolean};
-export const defaults:Settings={music:true,effects:true,volume:20,theme:'light',motionPaused:false,mode:'ranking',preferredK:3,linked:true,selectedAction:'keep',rejectedAction:'keep',conflict:'rename',showPreview:false};
+import { setLanguage, type Language } from '../i18n';
+export type Settings={language:Language;music:boolean;effects:boolean;volume:number;theme:'light'|'dark';motionPaused:boolean;mode:TournamentMode;preferredK:number;linked:boolean;selectedAction:'keep'|'move';rejectedAction:'keep'|'move'|'recycle';conflict:'rename'|'skip';showPreview:boolean};
+export const defaults:Settings={language:'zh',music:true,effects:true,volume:20,theme:'light',motionPaused:false,mode:'ranking',preferredK:3,linked:true,selectedAction:'keep',rejectedAction:'keep',conflict:'rename',showPreview:false};
 export function sanitize(value:unknown):Settings {
  const v=value&&typeof value==='object'?value as Record<string,unknown>:{};const s={...defaults};
  for(const k of ['music','effects','motionPaused','linked','showPreview'] as const)if(typeof v[k]==='boolean')s[k]=v[k];
- for(const [key,options] of Object.entries({theme:['light','dark'],mode:modes,selectedAction:['keep','move'],rejectedAction:['keep','move','recycle'],conflict:['rename','skip']}))if((options as readonly string[]).includes(v[key] as string))Object.assign(s,{[key]:v[key]});
+ for(const [key,options] of Object.entries({language:['zh','en'],theme:['light','dark'],mode:modes,selectedAction:['keep','move'],rejectedAction:['keep','move','recycle'],conflict:['rename','skip']}))if((options as readonly string[]).includes(v[key] as string))Object.assign(s,{[key]:v[key]});
  if(typeof v.volume==='number'&&Number.isFinite(v.volume))s.volume=Math.max(0,Math.min(100,v.volume));
  if(typeof v.preferredK==='number'&&Number.isInteger(v.preferredK)&&v.preferredK>=1&&v.preferredK<=256)s.preferredK=v.preferredK;
  return s;
 }
 let settings={...defaults},notice='',queue=Promise.resolve();const listeners=new Set<()=>void>();
 const notify=()=>listeners.forEach(f=>f());
-function applyTheme(){document.documentElement.dataset.theme=settings.theme;document.querySelector('meta[name="theme-color"]')?.setAttribute('content',settings.theme==='dark'?'#252323':'#f6f2e9');}
+function applyTheme(){setLanguage(settings.language);document.documentElement.lang=settings.language==='zh'?'zh-CN':'en';document.documentElement.dataset.theme=settings.theme;document.querySelector('meta[name="theme-color"]')?.setAttribute('content',settings.theme==='dark'?'#252323':'#f6f2e9');}
 export async function initializeSettings(){
  try {if(isTauri()){const result=await invoke<{values:unknown;warning:string}>('load_settings');settings=sanitize(result.values);notice=result.warning;
  // Migrate the old browser theme only when the native settings file has never existed.

@@ -1,7 +1,9 @@
+import { t, message } from '../i18n';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { choose, createSession, displayPair, undo, veto, modes, minimum, estimate, type Session } from '../core/tournament';
 import { downloadResults, importPictures, releasePictures, copyNames, isDesktop, desktop, type Picture } from '../platform';
 import type { NativeBatch } from '../platform/desktop';
+import { LanguageControl } from '../ui/LanguageControl';
 import { Icon } from '../ui/Icon';
 import { Viewer } from '../ui/Viewer';
 import { Dialog } from '../ui/Dialog';
@@ -27,6 +29,11 @@ import '../ui/competition.css';
 type Confirmation = { title: string; body: string; action: string; run: () => void };
 export function App() {
   const compact = useCompactLayout();
+  const [language] = usePreference('language');
+  useEffect(() => {
+    document.title = language === 'en' ? 'Image Arena — Pick your favorites' : '选图擂台 · Image Arena';
+    if (isDesktop) void desktop().then(d => d.setNativeLanguage(language)).catch(error => setErrors([String(error)]));
+  }, [language]);
   const [pictures, setPictures] = useState<Picture[]>([]);
   const picturesRef = useRef<Picture[]>([]);
   const [session, setSession] = useState<Session | null>(null);
@@ -69,7 +76,7 @@ export function App() {
   const activeMode = session?.config.mode ?? mode;
   const copy = competitionCopy[activeMode];
   const seats = activeMode === 'ranking' ? (session?.config.targetK ?? k) : 1;
-  const sound = useArenaSound(activeMode, stage, session?.groupsLocked ? 'knockout' : session?.pending?.label?.startsWith('复活区') ? 'lower' : '');
+  const sound = useArenaSound(activeMode, stage, session?.groupsLocked ? 'knockout' : session?.pending?.phase?.id === 'lower' ? 'lower' : '');
   const words = session ? battleCopy(session) : null;
   const sceneMotion = useSceneMotion(stage === 'battle' || !!viewer || !!confirmation || organizing);
   const match = session?.pending;
@@ -102,7 +109,7 @@ export function App() {
         d.watchNativeDrops(batch => nativeDropHandler.current(batch), error => setErrors([String(error)])),
         d.watchClose(() => nativeCloseHandler.current()),
       ])) { if (disposed) stop(); else cleanup.push(stop); }
-    }).catch(error => setErrors([`桌面连接失败：${String(error)}`]));
+    }).catch(error => setErrors([t("桌面连接失败：{0}", [String(error)])]));
     return () => { disposed = true; cleanup.forEach(stop => stop()); };
   }, []);
   useEffect(() => {
@@ -126,7 +133,7 @@ export function App() {
       syncPictures(all); setErrors(result.errors);
       if (!result.errors.length) setImportProgress(null);
 
-      if (result.pictures.length) setToast(`${result.pictures.length} 位选手到了。${phaseLine(activeMode,'arrival',picturesRef.current.length)}`);
+      if (result.pictures.length) setToast(t("{0} 位选手到了。{1}", [result.pictures.length, phaseLine(activeMode,'arrival',picturesRef.current.length)]));
     } finally { importingRef.current = false; setImporting(false); if (input.current) input.current.value = ''; }
   }
   async function importNative(batch?: NativeBatch) {
@@ -143,21 +150,21 @@ export function App() {
       const all = [...picturesRef.current, ...result.pictures];
       syncPictures(all); setErrors(result.errors);
 
-      if (result.pictures.length) setToast(`${result.pictures.length} 位选手到了。${phaseLine(activeMode,'arrival',picturesRef.current.length)}`);
-    } catch (error) { setErrors([`导入失败：${error instanceof Error ? error.message : String(error)}`]); }
+      if (result.pictures.length) setToast(t("{0} 位选手到了。{1}", [result.pictures.length, phaseLine(activeMode,'arrival',picturesRef.current.length)]));
+    } catch (error) { setErrors([t("导入失败：{0}", [error instanceof Error ? error.message : String(error)])]); }
     finally { importingRef.current = false; setImporting(false); }
   }
   nativeDropHandler.current = batch => { void importNative(batch); };
   nativeCloseHandler.current = () => {
     if (closingNativeWindow.current) return;
-    if (fileActivity.current) { setToast('正在检查或处理文件，请等待完成；执行时可停止后续文件。'); return; }
+    if (fileActivity.current) { setToast(t("正在检查或处理文件，请等待完成；执行时可停止后续文件。")); return; }
     const close = () => {
       if (closingNativeWindow.current) return;
       closingNativeWindow.current = true;
       void flushSettings().then(() => desktop()).then(d => d.closeNativeWindow()).catch(error => { closingNativeWindow.current = false; setToast(String(error)); });
     };
     if (!hasOngoingMatch(sessionRef.current)) { close(); return; }
-    setConfirmation({ title: '现在散场？', body: '比赛还没结束，关闭会丢失本轮进度，磁盘原图不会改变。', action: '关闭选图擂台', run: close });
+    setConfirmation({ title: t("现在散场？"), body: t("比赛还没结束，关闭会丢失本轮进度，磁盘原图不会改变。"), action: t("关闭选图擂台"), run: close });
   };
   function removePicture(id: string) {
     const remaining = pictures.filter(p => p.id !== id);
@@ -182,7 +189,7 @@ export function App() {
     setOrganizationPlan(null);
     const next = veto(current, ids, revision); syncSession(next);
     const message = vetoCopy(current, next, ids);
-    setToast('裁判示意：' + ids.map(id => String(current.config.imageIds.indexOf(id)+1).padStart(2,'0') + ' 号').join('、') + '本轮退场。' + message); sound.cue(ids.length > 1 ? 'vetoBoth' : 'veto');
+    setToast(t("本轮退场：{0}。{1}", [ids.map(id => String(current.config.imageIds.indexOf(id)+1).padStart(2,'0')).join(', '), message])); sound.cue(ids.length > 1 ? 'vetoBoth' : 'veto');
     timer.current = setTimeout(() => { lock.current = false; setCooldown(false); }, 400);
   }
   const vote = useCallback((id: string, matchId: string) => {
@@ -195,13 +202,13 @@ export function App() {
     timer.current = setTimeout(() => {
       syncSession(next); setSelected(null);
       if (next.completed && next.ranked.length) sound.cue(next.automaticFinish ? 'settle' : 'win');
-      if (next.ranked.length > current.ranked.length && !next.completed) setToast(`${next.ranked.length === 1 ? '冠军诞生' : `第 ${next.ranked.length} 名就位`}！接下来争夺第 ${next.ranked.length + 1} 名。`);
+      if (next.ranked.length > current.ranked.length && !next.completed) setToast(t("已入选第 {0} 名，接下来争夺第 {1} 名。", [next.ranked.length, next.ranked.length + 1]));
       timer.current = setTimeout(() => { lock.current = false; setCooldown(false); }, 180);
     }, window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 200);
   }, [ready, viewer, confirmation, organizing]);
   const goBack = useCallback(() => {
     if (organizing || filesLockedRef.current || lock.current || inspecting.current || !sessionRef.current?.events.length || viewer || confirmation) return;
-    syncSession(undo(sessionRef.current)); setToast(sessionRef.current?.config.mode==='groups'&&sessionRef.current?.groupsLocked?'出线名单仍锁定，上一场淘汰赛重看。':phaseLine(sessionRef.current?.config.mode ?? 'ranking','undo',sessionRef.current?.events.length ?? 0)); sound.cue('undo');
+    syncSession(undo(sessionRef.current)); setToast(sessionRef.current?.config.mode==='groups'&&sessionRef.current?.groupsLocked?t("出线名单仍锁定，上一场淘汰赛重看。"):phaseLine(sessionRef.current?.config.mode ?? 'ranking','undo',sessionRef.current?.events.length ?? 0)); sound.cue('undo');
   }, [viewer, confirmation, organizing]);
   useEffect(() => {
     const keydown = (e: KeyboardEvent) => {
@@ -221,11 +228,11 @@ export function App() {
     return () => { window.removeEventListener('keydown', keydown); window.removeEventListener('keyup', keyup); window.removeEventListener('blur', blur); };
   }, [match, pair, vote, goBack, viewer, confirmation]);
   function confirmReset(type: 'prepare' | 'replay' | 'clear') {
-    if (filesLockedRef.current && type !== 'clear') { setToast('本轮文件已处理，请开始新一批图片。'); return; }
+    if (filesLockedRef.current && type !== 'clear') { setToast(t("本轮文件已处理，请开始新一批图片。")); return; }
     const options = {
-      prepare: { title: '返回准备区？', body: '本轮对决会清空，图片会保留。你可以调整图片和入选数量。', action: '返回准备区' },
-      replay: { title: '用这些图片再玩一轮？', body: '重新抽签会清空本轮对决与名次。需要保留结果的话，请先下载清单。', action: '重新抽签' },
-      clear: { title: '开始新一批图片？', body: '本轮图片与结果将从页面移除，磁盘原图不会改变。', action: '开始新一批' },
+      prepare: { title: t("返回准备区？"), body: t("本轮对决会清空，图片会保留。你可以调整图片和入选数量。"), action: t("返回准备区") },
+      replay: { title: t("用这些图片再玩一轮？"), body: t("重新抽签会清空本轮对决与名次。需要保留结果的话，请先下载清单。"), action: t("重新抽签") },
+      clear: { title: t("开始新一批图片？"), body: t("本轮图片与结果将从页面移除，磁盘原图不会改变。"), action: t("开始新一批") },
     };
     const reset = () => {
       setConfirmation(null); setToast('');
@@ -240,63 +247,63 @@ export function App() {
   const ranked = session?.ranked.map(r => ({ ...r, picture: byId.get(r.imageId)! })) ?? [];
   return <div className={`app ${stage}${compact ? ' compact' : ''}`}>
     <ArenaScene moving={sceneMotion.moving} />
-    <header className="topbar"><button type="button" className="brand" aria-label="选图擂台，返回准备区" disabled={cooldown || filesLocked} onClick={() => { if (session) confirmReset('prepare'); }}><span className="brand-icon"><Icon name="arena" size={26} /></span><span>选图擂台<small>IMAGE ARENA</small></span></button>
-      <nav aria-label="当前进度" className="steps"><span className={stage === 'prepare' ? 'current' : 'done'}><Icon name="image" size={16} />选手入场</span><i /><span className={stage === 'battle' ? 'current' : stage === 'results' ? 'done' : ''}><Icon name="arena" size={16} />两图过招</span><i /><span className={stage === 'results' ? 'current' : ''}><Icon name="trophy" size={16} />{activeMode === 'ranking' ? '心头好落座' : '冠军加冕'}</span></nav>
-      <div className="top-action">{compact ? <SettingsPopover className="compact-settings"><summary>设置</summary><div><SoundControl sound={sound} /><SceneMotionControl {...sceneMotion} /><ThemeControl /></div></SettingsPopover> : <><SoundControl sound={sound} /><SceneMotionControl {...sceneMotion} /><ThemeControl /></>}{session ? <button className="quiet" disabled={cooldown || filesLocked} onClick={() => confirmReset('prepare')}>返回准备区</button> : <span className="local-badge"><Icon name="shield" size={16} /> 原图只在本机</span>}</div>
+    <header className="topbar"><button type="button" className="brand" aria-label={t("选图擂台，返回准备区")} disabled={cooldown || filesLocked} onClick={() => { if (session) confirmReset('prepare'); }}><span className="brand-icon"><Icon name="arena" size={26} /></span><span>{t("选图擂台")}<small>IMAGE ARENA</small></span></button>
+      <nav aria-label={t("当前进度")} className="steps"><span className={stage === 'prepare' ? 'current' : 'done'}><Icon name="image" size={16} />{t("选手入场")}</span><i /><span className={stage === 'battle' ? 'current' : stage === 'results' ? 'done' : ''}><Icon name="arena" size={16} />{t("两图过招")}</span><i /><span className={stage === 'results' ? 'current' : ''}><Icon name="trophy" size={16} />{activeMode === 'ranking' ? t("心头好落座") : t("冠军加冕")}</span></nav>
+      <div className="top-action">{compact ? <SettingsPopover className="compact-settings"><summary>{t("设置")}</summary><div><SoundControl sound={sound} /><SceneMotionControl {...sceneMotion} /><ThemeControl /><LanguageControl /></div></SettingsPopover> : <><SoundControl sound={sound} /><SceneMotionControl {...sceneMotion} /><ThemeControl /><LanguageControl /></>}{session ? <button className="quiet" disabled={cooldown || filesLocked} onClick={() => confirmReset('prepare')}>{t("返回准备区")}</button> : <span className="local-badge"><Icon name="shield" size={16} /> {t("原图只在本机")}</span>}</div>
     </header>
-    {settingsNotice && <p className="settings-notice" role="status">{settingsNotice}</p>}
+    {settingsNotice && <p className="settings-notice" role="status">{message(settingsNotice)}</p>}
     {stage === 'prepare' && <main className="prepare-main">
-      <section className="intro"><span className="eyebrow sticker"><Icon name="star" size={16} />今日开擂 · 好图请上台</span><h1>好图过招，<span>胜者为王。</span></h1><p>{copy.intro}</p><span className="hero-doodle doodle-left" aria-hidden="true">✦</span><span className="hero-doodle doodle-right" aria-hidden="true">✧</span></section>
-      <fieldset className="competition-picker"><legend>今天怎么过招？</legend>{modes.map(value => <button key={value} aria-pressed={mode === value} onClick={() => setMode(value)}><strong>{competitionCopy[value].name}</strong><span>{competitionCopy[value].description}</span><small>至少 {minimum[value]} 张</small></button>)}</fieldset>
+      <section className="intro"><span className="eyebrow sticker"><Icon name="star" size={16} />{t("今日开擂 · 好图请上台")}</span><h1>{t("好图过招，")}<span>{t("胜者为王。")}</span></h1><p>{copy.intro}</p><span className="hero-doodle doodle-left" aria-hidden="true">✦</span><span className="hero-doodle doodle-right" aria-hidden="true">✧</span></section>
+      <fieldset className="competition-picker"><legend>{t("今天怎么过招？")}</legend>{modes.map(value => <button key={value} aria-pressed={mode === value} onClick={() => setMode(value)}><strong>{competitionCopy[value].name}</strong><span>{competitionCopy[value].description}</span><small>{t("至少 {0} 张", [minimum[value]])}</small></button>)}</fieldset>
       <div className="setup-grid"><section className="import-panel">
-        <div className="section-heading"><h2>选手席 <span className="count">{pictures.length.toString().padStart(2, '0')}</span></h2><span>PNG / JPEG / WebP</span></div>
-        {!isDesktop && <input ref={input} type="file" multiple accept="image/png,image/jpeg,image/webp" className="file-input" aria-label="导入图片" disabled={importing} onChange={e => void importFiles(Array.from(e.target.files ?? []))} />}
+        <div className="section-heading"><h2>{t("选手席")}<span className="count">{pictures.length.toString().padStart(2, '0')}</span></h2><span>PNG / JPEG / WebP</span></div>
+        {!isDesktop && <input ref={input} type="file" multiple accept="image/png,image/jpeg,image/webp" className="file-input" aria-label={t("导入图片")} disabled={importing} onChange={e => void importFiles(Array.from(e.target.files ?? []))} />}
         <button className={`drop-zone ${dragging ? 'dragging' : ''} ${pictures.length ? 'compact' : ''}`} disabled={importing} onClick={() => isDesktop ? void importNative() : input.current?.click()} onDragOver={e => { e.preventDefault(); setDragging(true); }} onDragLeave={() => setDragging(false)} onDrop={e => {
           e.preventDefault(); setDragging(false);
           if (isDesktop) return;
           if (Array.from(e.dataTransfer.items).some(item => item.webkitGetAsEntry?.()?.isDirectory)) {
-            setImportProgress(null); setErrors(['拖入的内容包含文件夹。请直接拖入图片文件；本轮没有读取该文件夹。']); return;
+            setImportProgress(null); setErrors([t("拖入的内容包含文件夹。请直接拖入图片文件；本轮没有读取该文件夹。")]); return;
           }
           void importFiles(Array.from(e.dataTransfer.files));
         }}>
-          <span className="upload-symbol"><Icon name={pictures.length ? 'plus' : 'upload'} size={30} /></span><strong>{importing ? '正在检查图片…' : pictures.length ? '继续添加图片' : '张张都不错？那就过两招。'}</strong><span>{importing ? '逐张读取，原文件保持不变' : pictures.length ? '拖入或点击选择' : '拖入图片，或点这里挑选'}</span>
+          <span className="upload-symbol"><Icon name={pictures.length ? 'plus' : 'upload'} size={30} /></span><strong>{importing ? t("正在检查图片…") : pictures.length ? t("继续添加图片") : t("张张都不错？那就过两招。")}</strong><span>{importing ? t("逐张读取，原文件保持不变") : pictures.length ? t("拖入或点击选择") : t("拖入图片，或点这里挑选")}</span>
         </button>
-        {!!pictures.length && <div className="thumbnail-grid">{pictures.map((p, index) => <div className={`thumbnail ${excluded.includes(p.id) ? 'excluded' : ''}`} key={p.id}><button className="thumb-preview" aria-label={`查看候选 ${index + 1}：${p.file.name}`} onClick={() => setViewer(p)}><img src={p.url} alt="" loading="lazy" /><span>{p.file.name}</span></button>{excluded.includes(p.id) && <button className="restore-candidate" onClick={() => setExcluded(old => old.filter(id => id !== p.id))}>重新纳入</button>}<button className="remove" disabled={importing} aria-label={`移除候选 ${index + 1}：${p.file.name}`} onClick={() => removePicture(p.id)}><Icon name="close" size={14} /></button></div>)}</div>}
-        {importProgress && (importing || errors.length > 0) && <div className="import-progress" role="status" aria-live="polite"><progress value={importProgress.completed} max={Math.max(1, importProgress.total)} aria-label="图片导入进度" /><span>{importing ? '正在处理' : '处理完成'} {importProgress.completed} / {importProgress.total}</span></div>}
-        {!!errors.length && <div className="import-errors" role="alert"><strong>{errors.length} 个文件未加入</strong><ul>{errors.map((e, i) => <li key={i}>{e}</li>)}</ul></div>}
-        {!isDesktop && compact && <p className="mobile-import-note">从相册或文件多选 PNG / JPEG / WebP。手机建议先试少量图片；大图较多时可能需要更久。HEIC 等不支持的格式请先转为 JPEG。</p>}
-        <p className="local-note"><Icon name="shield" size={16} /> 只读取图片，不上传，也不修改原文件。</p>
+        {!!pictures.length && <div className="thumbnail-grid">{pictures.map((p, index) => <div className={`thumbnail ${excluded.includes(p.id) ? 'excluded' : ''}`} key={p.id}><button className="thumb-preview" aria-label={t("查看候选 {0}：{1}", [index + 1, p.file.name])} onClick={() => setViewer(p)}><img src={p.url} alt="" loading="lazy" /><span>{p.file.name}</span></button>{excluded.includes(p.id) && <button className="restore-candidate" onClick={() => setExcluded(old => old.filter(id => id !== p.id))}>{t("重新纳入")}</button>}<button className="remove" disabled={importing} aria-label={t("移除候选 {0}：{1}", [index + 1, p.file.name])} onClick={() => removePicture(p.id)}><Icon name="close" size={14} /></button></div>)}</div>}
+        {importProgress && (importing || errors.length > 0) && <div className="import-progress" role="status" aria-live="polite"><progress value={importProgress.completed} max={Math.max(1, importProgress.total)} aria-label={t("图片导入进度")} /><span>{importing ? t("正在处理") : t("处理完成")} {importProgress.completed} / {importProgress.total}</span></div>}
+        {!!errors.length && <div className="import-errors" role="alert"><strong>{t("{0} 个文件未加入", [errors.length])}</strong><ul>{errors.map((e, i) => <li key={i}>{message(e)}</li>)}</ul></div>}
+        {!isDesktop && compact && <p className="mobile-import-note">{t("从相册或文件多选 PNG / JPEG / WebP。手机建议先试少量图片；大图较多时可能需要更久。HEIC 等不支持的格式请先转为 JPEG。")}</p>}
+        <p className="local-note"><Icon name="shield" size={16} /> {t("只读取图片，不上传，也不修改原文件。")}</p>
       </section>
-      <aside className="setup-options">{mode === 'ranking' ? <><div className="seat-title"><Icon name="trophy" size={26} /><h2>留几个心头好？<small>按喜欢的顺序，慢慢选</small></h2></div><div className="seat-options">{[1, 2, 3].map(num => <button className={k === num ? 'active' : ''} key={num} disabled={candidates.length > 0 && num > candidates.length} aria-pressed={k === num} onClick={() => { setK(num); }}><b>{num}</b><span>{num === 1 ? '冠军' : num === 2 ? '前两名' : '前三名'}</span></button>)}</div>
-        <label className="custom-k">自定义数量 <input type="number" aria-label="自定义入选数量" min={1} max={candidates.length || 1} value={Number.isNaN(k) ? '' : k} disabled={!candidates.length} onChange={e => { setK(e.target.value === '' ? NaN : Number(e.target.value)); }} /><span>/ {candidates.length || '—'}</span></label>
-        </> : <div className="knockout-invitation"><Icon name="trophy" size={26} /><div><h2>{copy.name}</h2><p>{copy.description}</p><small>退场先后不作排名；选错仍可撤销改判。</small></div></div>}
-        <div className="start-area"><button className="primary start" aria-label={candidates.length === 1 && mode === 'ranking' ? '查看唯一候选' : '开始对决'} disabled={candidates.length < minimum[mode] || !validK || importing} onClick={() => start()}>{candidates.length === 1 && mode === 'ranking' ? '查看唯一候选' : copy.start}<Icon name="arrow" /></button><p>{candidates.length < minimum[mode] ? `再来 ${minimum[mode] - candidates.length} 张，就能开${copy.name}。` : `${candidates.length} 位选手 · ${mode === 'ranking' || mode === 'double' ? '至多' : '预计'} ${estimate(mode, candidates.length, k)} 场${mode === 'groups' ? '，另计同分加赛' : ''}`}</p>{estimate(mode,candidates.length,k)>80 && <small>这场会比较长，想快一点可以选一败退场。</small>}</div>
+      <aside className="setup-options">{mode === 'ranking' ? <><div className="seat-title"><Icon name="trophy" size={26} /><h2>{t("留几个心头好？")}<small>{t("按喜欢的顺序，慢慢选")}</small></h2></div><div className="seat-options">{[1, 2, 3].map(num => <button className={k === num ? 'active' : ''} key={num} disabled={candidates.length > 0 && num > candidates.length} aria-pressed={k === num} onClick={() => { setK(num); }}><b>{num}</b><span>{num === 1 ? t("冠军") : num === 2 ? t("前两名") : t("前三名")}</span></button>)}</div>
+        <label className="custom-k">{t("自定义数量")}<input type="number" aria-label={t("自定义入选数量")} min={1} max={candidates.length || 1} value={Number.isNaN(k) ? '' : k} disabled={!candidates.length} onChange={e => { setK(e.target.value === '' ? NaN : Number(e.target.value)); }} /><span>/ {candidates.length || '—'}</span></label>
+        </> : <div className="knockout-invitation"><Icon name="trophy" size={26} /><div><h2>{copy.name}</h2><p>{copy.description}</p><small>{t("退场先后不作排名；选错仍可撤销改判。")}</small></div></div>}
+        <div className="start-area"><button className="primary start" aria-label={candidates.length === 1 && mode === 'ranking' ? t("查看唯一候选") : t("开始对决")} disabled={candidates.length < minimum[mode] || !validK || importing} onClick={() => start()}>{candidates.length === 1 && mode === 'ranking' ? t("查看唯一候选") : copy.start}<Icon name="arrow" /></button><p>{candidates.length < minimum[mode] ? t("再来 {0} 张，就能开{1}。", [minimum[mode] - candidates.length, copy.name]) : t("{0} 位选手 · {1} {2} 场{3}", [candidates.length, mode === 'ranking' || mode === 'double' ? t("至多") : t("预计"), estimate(mode, candidates.length, k), mode === 'groups' ? t("，另计同分加赛") : ''])}</p>{estimate(mode,candidates.length,k)>80 && <small>{t("这场会比较长，想快一点可以选一败退场。")}</small>}</div>
       </aside></div>
-      <footer className="prepare-footer"><div className="postcard-note"><span>{sceneMotion.paused || sceneMotion.reduced ? '停一下，也不耽误喜欢。' : '风正好，慢慢选。'}</span></div>{isDesktop && <button className="quiet" onClick={() => void desktop().then(d => d.openOperationRecords()).catch(e => setToast(String(e)))}>打开整理记录文件夹</button>}<span>{isDesktop ? '临时对局 · 关闭后需重新导入' : '临时会话 · 刷新后需重新导入'}</span></footer>
+      <footer className="prepare-footer"><div className="postcard-note"><span>{sceneMotion.paused || sceneMotion.reduced ? t("停一下，也不耽误喜欢。") : t("风正好，慢慢选。")}</span></div>{isDesktop && <button className="quiet" onClick={() => void desktop().then(d => d.openOperationRecords()).catch(e => setToast(String(e)))}>{t("打开整理记录文件夹")}</button>}<span>{isDesktop ? t("临时对局 · 关闭后需重新导入") : t("临时会话 · 刷新后需重新导入")}</span></footer>
     </main>}
     {stage === 'battle' && session && match && pair && <main className="battle-main">
-      <div className="battle-heading"><div><span className="eyebrow stage-badge"><Icon name="trophy" size={14} />{copy.name} · {words?.badge}</span><h1>{words?.title}</h1></div><div className="battle-meta"><span>已 PK <strong data-testid="comparison-count">{session.history.length}</strong> 场</span><button className="secondary" disabled={!session.events.length || cooldown || filesLocked} onClick={goBack}><Icon name="undo" size={17} />撤销 <kbd>Ctrl Z</kbd></button></div></div>
-      <Comparison compact={compact} vetoBoth={() => judge(pair, session.revision)} voteVerb={match.kind === 'group' ? '得分' : activeMode === 'gauntlet' ? '留台' : activeMode === 'double' ? '胜出' : undefined} flashText={match.kind === 'group' ? '这一分，记下了。' : match.kind === 'tie' ? '出线加赛，这票给你。' : activeMode === 'gauntlet' ? session.cursor + 1 >= session.queue.length ? '最后一席，留给你。' : '留步，下一位请。' : activeMode === 'double' ? '这场拿下，继续过招。' : undefined} veto={id => judge([id], session.revision)} roleLabels={pair.map(id => activeMode === 'gauntlet' ? session.history.length === 0 && session.events.length === 0 ? '首轮选手' : id === session.holder ? '当前擂主' : '前来挑战' : activeMode === 'double' ? `${session.losses[id] ?? 0} 败` : '') as [string,string]} knockout={activeMode !== 'ranking'} key={`${match.id}:${retry}`} pictures={[byId.get(pair[0])!, byId.get(pair[1])!]} contestantNumbers={[session.config.imageIds.indexOf(pair[0]) + 1, session.config.imageIds.indexOf(pair[1]) + 1]} loaded={loaded} ready={ready} cooldown={cooldown} selected={selected} linked={linked} onLinked={setLinked} vote={id => vote(id, match.id)} onLoad={id => setLoaded(old => new Set([...old, id]))} onError={() => setLoadError(true)} open={setViewer} onGesture={active => { inspecting.current = active; }} />
-      <div className="battle-bottom">{loadError ? <div role="alert" className="load-error">图片载入失败。<button onClick={() => { setLoadError(false); setLoaded(new Set()); setRetry(n => n + 1); }}>重试加载</button><button onClick={() => confirmReset('prepare')}>返回调整图片</button></div> : <p>{words?.hint}</p>}<span>{session.vetoed.length ? `裁判否决 ${session.vetoed.length} 张 · 比较场次不含自动晋级` : activeMode === 'ranking' ? `已入选 ${session.ranked.length} / ${seats} 名` : `${roundPictures.length} 位选手 · 只决冠军`}</span></div>
-      <button className="quiet veto-both" disabled={cooldown || !ready} onClick={() => judge(pair, session.revision)}>这两张都否决</button>
+      <div className="battle-heading"><div><span className="eyebrow stage-badge"><Icon name="trophy" size={14} /><span className="mode-name">{copy.name} · </span>{words?.badge}</span><h1>{words?.title}</h1></div><div className="battle-meta"><span>{t("已 PK")}<strong data-testid="comparison-count">{session.history.length}</strong> {t("场")}</span><button className="secondary" disabled={!session.events.length || cooldown || filesLocked} onClick={goBack}><Icon name="undo" size={17} />{t("撤销")}<kbd>Ctrl Z</kbd></button></div></div>
+      <Comparison compact={compact} vetoBoth={() => judge(pair, session.revision)} voteVerb={match.kind === 'group' ? t("得分") : activeMode === 'gauntlet' ? t("留台") : activeMode === 'double' ? t("胜出") : undefined} flashText={match.kind === 'group' ? t("这一分，记下了。") : match.kind === 'tie' ? t("出线加赛，这票给你。") : activeMode === 'gauntlet' ? session.cursor + 1 >= session.queue.length ? t("最后一席，留给你。") : t("留步，下一位请。") : activeMode === 'double' ? t("这场拿下，继续过招。") : undefined} veto={id => judge([id], session.revision)} roleLabels={pair.map(id => activeMode === 'gauntlet' ? session.history.length === 0 && session.events.length === 0 ? t("首轮选手") : id === session.holder ? t("当前擂主") : t("前来挑战") : activeMode === 'double' ? t("{0} 败", [session.losses[id] ?? 0]) : '') as [string,string]} knockout={activeMode !== 'ranking'} key={`${match.id}:${retry}`} pictures={[byId.get(pair[0])!, byId.get(pair[1])!]} contestantNumbers={[session.config.imageIds.indexOf(pair[0]) + 1, session.config.imageIds.indexOf(pair[1]) + 1]} loaded={loaded} ready={ready} cooldown={cooldown} selected={selected} linked={linked} onLinked={setLinked} vote={id => vote(id, match.id)} onLoad={id => setLoaded(old => new Set([...old, id]))} onError={() => setLoadError(true)} open={setViewer} onGesture={active => { inspecting.current = active; }} />
+      <div className="battle-bottom">{loadError ? <div role="alert" className="load-error">{t("图片载入失败。")}<button onClick={() => { setLoadError(false); setLoaded(new Set()); setRetry(n => n + 1); }}>{t("重试加载")}</button><button onClick={() => confirmReset('prepare')}>{t("返回调整图片")}</button></div> : <p>{words?.hint}</p>}<span>{session.vetoed.length ? t("裁判否决 {0} 张 · 比较场次不含自动晋级", [session.vetoed.length]) : activeMode === 'ranking' ? t("已入选 {0} / {1} 名", [session.ranked.length, seats]) : t("{0} 位选手 · 只决冠军", [roundPictures.length])}</span></div>
+      <button className="quiet veto-both" disabled={cooldown || !ready} onClick={() => judge(pair, session.revision)}>{t("这两张都否决")}</button>
       {activeMode === 'knockout' && <Bracket session={session} pictures={roundPictures} />}
       {['gauntlet','double','groups'].includes(activeMode) && <CompetitionDetails session={session} pictures={roundPictures} />}
     </main>}
-    {stage === 'results' && session && <main className="results-main"><div className="result-heading"><span className="eyebrow sticker"><Icon name="trophy" size={18} />{ranked.length ? copy.resultLabel : '本轮无人入选'}</span><h1>{outcome?.title}</h1><p>{roundPictures.length} 张参赛 · {session.history.length} 场对决 · {session.vetoed.length} 张裁判否决 · {ranked.length} 张入选</p><p>{outcome?.note}</p></div>
-      {!!ranked.length && <section className={`podium seats-${Math.min(ranked.length,3)}`} aria-label="本轮领奖台">{ranked.slice(0,3).map(({rank,picture:p})=><article className={`podium-card rank-${rank}`} key={p.id} data-testid={`rank-${rank}`}><div className="rank-label"><span className="rank-number">{String(rank).padStart(2,'0')}</span><span>{roundPictures.length===1?'唯一候选':activeMode==='gauntlet'?'最终擂主':['','本轮冠军','第二名','第三名'][rank]}</span><Icon name="trophy" size={23}/></div><button className="result-image" aria-label={`查看第 ${rank} 名：${p.file.name}`} onClick={()=>setViewer(p)}><img src={p.url} alt={p.file.name}/><span><Icon name="zoom" size={18}/></span></button><div className="result-file"><strong title={p.file.name}>{p.file.name}</strong><span>{p.width} × {p.height}</span></div></article>)}</section>}
-      {!ranked.length && <div className="empty-award">空席，也是一种认真选择。</div>}
-      {ranked.length>3 && <section className="more-results" aria-label="其他入选图片">{ranked.slice(3).map(({rank,picture:p})=><button className="result-row" key={p.id} data-testid={`rank-${rank}`} onClick={()=>setViewer(p)}><b>{rank}</b><img src={p.url} alt="" loading="lazy"/><span>{p.file.name}</span><Icon name="zoom" size={18}/></button>)}</section>}
-      <div className="result-actions"><div className="action-primary">{!ranked.length && <button className="primary" disabled={filesLocked} onClick={()=>confirmReset('prepare')}>返回准备区</button>}<button className="primary" onClick={()=>confirmReset('replay')} disabled={cooldown||filesLocked||roundPictures.length-session.vetoed.length<minimum[activeMode]}><Icon name="repeat" size={18}/>再玩一轮</button>{isDesktop&&<button className="primary" onClick={()=>setOrganizing(true)}>{organizationPlan?.started?'查看整理记录':'整理文件'}</button>}<button className="primary" onClick={()=>confirmReset('clear')}>开始新一批<Icon name="arrow" size={17}/></button></div><div className="action-secondary"><button className="secondary" disabled={!ranked.length} onClick={async()=>{try{await copyNames(ranked.map(r=>r.picture.file.name).join('\n'));setToast('已复制入选文件名。');}catch{setToast('复制失败，请下载结果清单。');}}}><Icon name="copy" size={17}/>复制入选文件名</button><button className="secondary" onClick={async()=>{try{const saved=await downloadResults(session,roundPictures);if(saved&&isDesktop)setToast('对局记录已保存。');}catch(e){setToast(String(e));}}}><Icon name="download" size={17}/>下载结果 JSON</button></div></div>
-      <p className="replay-note">再玩一轮使用剩余 {roundPictures.length-session.vetoed.length} 张{roundPictures.length-session.vetoed.length<minimum[activeMode]?'，不足开赛门槛，请返回准备区调整。':'，重新抽签。'}</p>
-      <div className="result-secondary"><button className="quiet" disabled={!session.events.length||cooldown||filesLocked} onClick={goBack}><Icon name="undo" size={16}/>{session.events.at(-1)?.type==='veto'?'撤销上次否决':'撤销最后一次选择'}</button><span>{isDesktop?'喜欢有了着落，需要的话，给原图安个新家。':'刷新前记得下载结果清单。'}</span></div>
-      {filesLocked&&<p className="file-lock-note">文件处理已开始，本轮排名已锁定。查看整理记录，或开始新一批继续选图。</p>}
+    {stage === 'results' && session && <main className="results-main"><div className="result-heading"><span className="eyebrow sticker"><Icon name="trophy" size={18} />{ranked.length ? copy.resultLabel : t("本轮无人入选")}</span><h1>{outcome?.title}</h1><p>{t("{0} 张参赛 · {1} 场对决 · {2} 张裁判否决 · {3} 张入选", [roundPictures.length, session.history.length, session.vetoed.length, ranked.length])}</p><p>{outcome?.note}</p></div>
+      {!!ranked.length && <section className={`podium seats-${Math.min(ranked.length,3)}`} aria-label={t("本轮领奖台")}>{ranked.slice(0,3).map(({rank,picture:p})=><article className={`podium-card rank-${rank}`} key={p.id} data-testid={`rank-${rank}`}><div className="rank-label"><span className="rank-number">{String(rank).padStart(2,'0')}</span><span>{roundPictures.length===1?t("唯一候选"):activeMode==='gauntlet'?t("最终擂主"):['',t("本轮冠军"),t("第二名"),t("第三名")][rank]}</span><Icon name="trophy" size={23}/></div><button className="result-image" aria-label={t("查看第 {0} 名：{1}", [rank, p.file.name])} onClick={()=>setViewer(p)}><img src={p.url} alt={p.file.name}/><span><Icon name="zoom" size={18}/></span></button><div className="result-file"><strong title={p.file.name}>{p.file.name}</strong><span>{p.width} × {p.height}</span></div></article>)}</section>}
+      {!ranked.length && <div className="empty-award">{t("空席，也是一种认真选择。")}</div>}
+      {ranked.length>3 && <section className="more-results" aria-label={t("其他入选图片")}>{ranked.slice(3).map(({rank,picture:p})=><button className="result-row" key={p.id} data-testid={`rank-${rank}`} onClick={()=>setViewer(p)}><b>{rank}</b><img src={p.url} alt="" loading="lazy"/><span>{p.file.name}</span><Icon name="zoom" size={18}/></button>)}</section>}
+      <div className="result-actions"><div className="action-primary">{!ranked.length && <button className="primary" disabled={filesLocked} onClick={()=>confirmReset('prepare')}>{t("返回准备区")}</button>}<button className="primary" onClick={()=>confirmReset('replay')} disabled={cooldown||filesLocked||roundPictures.length-session.vetoed.length<minimum[activeMode]}><Icon name="repeat" size={18}/>{t("再玩一轮")}</button>{isDesktop&&<button className="primary" onClick={()=>setOrganizing(true)}>{organizationPlan?.started?t("查看整理记录"):t("整理文件")}</button>}<button className="primary" onClick={()=>confirmReset('clear')}>{t("开始新一批")}<Icon name="arrow" size={17}/></button></div><div className="action-secondary"><button className="secondary" disabled={!ranked.length} onClick={async()=>{try{await copyNames(ranked.map(r=>r.picture.file.name).join('\n'));setToast(t("已复制入选文件名。"));}catch{setToast(t("复制失败，请下载结果清单。"));}}}><Icon name="copy" size={17}/>{t("复制入选文件名")}</button><button className="secondary" onClick={async()=>{try{const saved=await downloadResults(session,roundPictures);if(saved&&isDesktop)setToast(t("对局记录已保存。"));}catch(e){setToast(String(e));}}}><Icon name="download" size={17}/>{t("下载结果 JSON")}</button></div></div>
+      <p className="replay-note">{t("再玩一轮使用剩余 {0} 张{1}", [roundPictures.length-session.vetoed.length, roundPictures.length-session.vetoed.length<minimum[activeMode]?t("，不足开赛门槛，请返回准备区调整。"):t("，重新抽签。")])}</p>
+      <div className="result-secondary"><button className="quiet" disabled={!session.events.length||cooldown||filesLocked} onClick={goBack}><Icon name="undo" size={16}/>{session.events.at(-1)?.type==='veto'?t("撤销上次否决"):t("撤销最后一次选择")}</button><span>{isDesktop?t("喜欢有了着落，需要的话，给原图安个新家。"):t("刷新前记得下载结果清单。")}</span></div>
+      {filesLocked&&<p className="file-lock-note">{t("文件处理已开始，本轮排名已锁定。查看整理记录，或开始新一批继续选图。")}</p>}
       {activeMode==='knockout'&&<Bracket session={session} pictures={roundPictures}/>}
       {['gauntlet','double','groups'].includes(activeMode)&&<CompetitionDetails session={session} pictures={roundPictures}/>}
-      {[false,true].map(denied=>{const list=roundPictures.filter(p=>!session.ranked.some(r=>r.imageId===p.id)&&session.vetoed.includes(p.id)===denied);return list.length>0&&<details className="unselected" key={String(denied)}><summary>{denied?'裁判否决':copy.unselected} <span>{list.length} 张 · 不区分先后</span></summary><div className="unselected-grid">{list.map(p=><button key={p.id} onClick={()=>setViewer(p)}><img src={p.url} alt="" loading="lazy"/><span>{p.file.name}</span></button>)}</div></details>;})}
+      {[false,true].map(denied=>{const list=roundPictures.filter(p=>!session.ranked.some(r=>r.imageId===p.id)&&session.vetoed.includes(p.id)===denied);return list.length>0&&<details className="unselected" key={String(denied)}><summary>{denied?t("裁判否决"):copy.unselected} <span>{t("{0} 张 · 不区分先后", [list.length])}</span></summary><div className="unselected-grid">{list.map(p=><button key={p.id} onClick={()=>setViewer(p)}><img src={p.url} alt="" loading="lazy"/><span>{p.file.name}</span></button>)}</div></details>;})}
     </main>}
     {organizing && <Organizer vetoedCount={session?.vetoed.length ?? 0} selectedIds={ranked.map(r => r.imageId)} rejectedIds={roundPictures.filter(p => !ranked.some(r => r.imageId === p.id)).map(p => p.id)} plan={organizationPlan} onPlan={setOrganizationPlan} onExecuted={() => { filesLockedRef.current = true; setFilesLocked(true); }} onActivity={active => { fileActivity.current = active; }} onClose={() => setOrganizing(false)} />}
-    {viewer && <Viewer compact={compact} returnLabel={stage === 'battle' ? '返回比赛' : stage === 'results' ? '返回结果' : '返回选图区'} picture={viewer} onClose={() => setViewer(null)} onVeto={session && session.config.imageIds.includes(viewer.id) ? () => judge([viewer.id], session.revision) : undefined} vetoDisabled={filesLocked || cooldown || !!session?.vetoed.includes(viewer.id)} />}
-    {confirmation && <Dialog label={confirmation.title} onClose={() => setConfirmation(null)} className="confirm-dialog"><h2>{confirmation.title}</h2><p>{confirmation.body}</p><div><button className="secondary" onClick={() => setConfirmation(null)} autoFocus>继续当前一轮</button><button className="primary" onClick={confirmation.run}>{confirmation.action}</button></div></Dialog>}
-    <div className={`toast ${toast ? 'visible' : ''}`} role="status" aria-live="polite">{toast}{toast && session?.events.at(-1)?.type === 'veto' && !filesLocked && !viewer && <button disabled={cooldown} onClick={goBack}>撤销</button>}</div>
+    {viewer && <Viewer compact={compact} returnLabel={stage === 'battle' ? t("返回比赛") : stage === 'results' ? t("返回结果") : t("返回选图区")} picture={viewer} onClose={() => setViewer(null)} onVeto={session && session.config.imageIds.includes(viewer.id) ? () => judge([viewer.id], session.revision) : undefined} vetoDisabled={filesLocked || cooldown || !!session?.vetoed.includes(viewer.id)} />}
+    {confirmation && <Dialog label={message(confirmation.title)} onClose={() => setConfirmation(null)} className="confirm-dialog"><h2>{message(confirmation.title)}</h2><p>{message(confirmation.body)}</p><div><button className="secondary" onClick={() => setConfirmation(null)} autoFocus>{t("继续当前一轮")}</button><button className="primary" onClick={confirmation.run}>{message(confirmation.action)}</button></div></Dialog>}
+    <div className={`toast ${toast ? 'visible' : ''}`} role="status" aria-live="polite">{message(toast)}{toast && session?.events.at(-1)?.type === 'veto' && !filesLocked && !viewer && <button disabled={cooldown} onClick={goBack}>{t("撤销")}</button>}</div>
   </div>;
 }

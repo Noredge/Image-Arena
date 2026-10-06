@@ -1,3 +1,4 @@
+import { t } from '../i18n';
 import type { OrganizationPlan } from '../platform/desktop';
 
 export function organizationSummary(plan: OrganizationPlan) {
@@ -7,8 +8,8 @@ export function organizationSummary(plan: OrganizationPlan) {
   const remaining = count('ready');
   const success = plan.started && plan.finished && attention === 0 && remaining === 0;
   return { moved, recycled, attention, success,
-    text: success ? `已移动 ${moved} 张${recycled ? `，已回收 ${recycled} 张` : ''}，全部完成。`
-      : plan.started ? `已移动 ${moved} 张 · 已回收 ${recycled} 张${attention ? ` · ${attention} 项需查看` : ' · 正在处理'}`
-      : remaining ? `${remaining} 项待执行${attention ? `，${attention} 项需查看` : ''}` : '没有需要执行的文件，请查看保留或跳过原因。',
+    text: success ? t("已移动 {0} 张{1}，全部完成。", [moved, recycled ? t("，已回收 {0} 张", [recycled]) : ''])
+      : plan.started ? t("已移动 {0} 张 · 已回收 {1} 张{2}", [moved, recycled, attention ? t(" · {0} 项需查看", [attention]) : t(" · 正在处理")])
+      : remaining ? t("{0} 项待执行{1}", [remaining, attention ? t("，{0} 项需查看", [attention]) : '']) : t("没有需要执行的文件，请查看保留或跳过原因。"),
   };
 }

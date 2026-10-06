@@ -1,3 +1,5 @@
+import { t } from '../i18n';
+import { phaseLabel } from '../core/competition';
 import type { Session } from '../core/tournament';
 import { version as appVersion } from '../../package.json';
 
@@ -86,15 +88,16 @@ export function releasePictures(pictures: Picture[]) {
 }
 export function exportRecord(session: Session, pictures: Picture[]) {
   const ranks = new Map(session.ranked.map(r => [r.imageId, r.rank]));
+  const decision = (d: Session['history'][number]) => d.label === undefined ? { ...d } : { ...d, label: phaseLabel(d) };
   return {
     schemaVersion: 3, appVersion, algorithm: { ranking: 'winner-tree-v1', knockout: 'single-elimination-v1', gauntlet: 'gauntlet-v1', double: 'double-elimination-v1', groups: 'groups-knockout-v1' }[session.config.mode ?? 'ranking'],
     mode: session.config.mode ?? 'ranking',
     sessionSeed: session.config.seed, targetK: session.config.targetK,
     completed: session.completed, comparisons: session.history.length,
-    leafLayout: session.layout, actualSelected: session.ranked.length, vetoedIds: session.vetoed, events: session.events,
+    leafLayout: session.layout, actualSelected: session.ranked.length, vetoedIds: session.vetoed, events: session.events.map(event => event.type === 'vote' ? { ...event, decision: decision(event.decision) } : event),
     images: pictures.map(p => ({ imageId: p.id, originalName: p.file.name, size: p.file.size, lastModified: p.file.lastModified, rank: ranks.get(p.id) ?? null, category: session.vetoed.includes(p.id) ? 'vetoed' : ranks.has(p.id) ? 'selected' : 'unselected' })),
-    decisions: session.history,
-    note: session.config.mode !== 'ranking' ? '本届淘汰赛仅确定冠军；退场先后不代表偏好排名。此清单不是文件移动凭证。' : '本轮偏好排名。未入选图片无内部排名。此清单不是文件移动凭证。',
+    decisions: session.history.map(decision),
+    note: session.config.mode !== 'ranking' ? t('本届淘汰赛仅确定冠军；退场先后不代表偏好排名。此清单不是文件移动凭证。') : t('本轮偏好排名。未入选图片无内部排名。此清单不是文件移动凭证。'),
   };
 }
 export function downloadResults(session: Session, pictures: Picture[]) {

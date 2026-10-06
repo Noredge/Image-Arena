@@ -2,6 +2,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { loadPicture, type Picture } from './browser';
+import { getLanguage, message, t } from '../i18n';
 
 export type NativeImage = { id: string; name: string; size: number; lastModified: number };
 export type NativeBatch = { images: NativeImage[]; errors: string[] };
@@ -48,7 +49,8 @@ export async function loadNativeBatch(batch: NativeBatch): Promise<{ pictures: P
   }));
   return { pictures: pictures.filter((p): p is Picture => !!p), errors: [...batch.errors, ...failures.filter((e): e is string => !!e)] };
 }
-export const pickNativeImages = () => invoke<NativeBatch>('pick_images');
+export const pickNativeImages = () => invoke<NativeBatch>('pick_images', { language: getLanguage() });
+export const setNativeLanguage = (language: string) => invoke('set_ui_language', { language });
 export const releaseNativeIds = (ids: string[]) => invoke('release_images', { ids });
 export const setImportEnabled = (enabled: boolean) => invoke('set_import_enabled', { enabled });
 export async function watchNativeDrops(onBatch: (batch: NativeBatch) => void, onError: (error: unknown) => void) {
@@ -67,7 +69,7 @@ export async function watchNativeDrops(onBatch: (batch: NativeBatch) => void, on
 export const watchClose = (onClose: () => void) => getCurrentWindow().onCloseRequested(event => { event.preventDefault(); onClose(); });
 export const closeNativeWindow = () => invoke('close_app');
 export const copyNativeText = (text: string) => invoke('copy_text', { text });
-export const saveNativeRecord = (content: string, filename: string) => invoke<boolean>('save_record', { content, filename });
+export const saveNativeRecord = (content: string, filename: string) => invoke<boolean>('save_record', { content, filename, language: getLanguage() });
 
 export type FileAction = 'keep' | 'move' | 'recycle';
 export type Destination = { id: string; path: string };
@@ -75,7 +77,7 @@ export type OrganizationEntry = { operationId: string; imageIds: string[]; name:
 export type OrganizationPlan = { id: string; entries: OrganizationEntry[]; started: boolean; finished: boolean; journalPath: string | null; notice: string };
 export type OrganizationRequest = { selectedIds: string[]; rejectedIds: string[]; selected: { action: FileAction; destinationId: string | null }; rejected: { action: FileAction; destinationId: string | null }; conflict: 'rename' | 'skip' };
 export type DestinationGroup = 'selected' | 'rejected';
-export const pickDestination = (group: DestinationGroup) => invoke<Destination | null>('pick_destination', { group });
+export const pickDestination = (group: DestinationGroup) => invoke<Destination | null>('pick_destination', { group, language: getLanguage() });
 export const rememberedDestinations = () => invoke<{ selected: Destination | null; rejected: Destination | null; warnings: string[] }>('remembered_destinations');
 export const prepareOrganization = (request: OrganizationRequest) => invoke<OrganizationPlan>('prepare_organization', { request });
 export const discardOrganization = (id: string) => invoke('discard_organization', { id });
@@ -83,3 +85,10 @@ export const executeOrganization = (id: string, retry: boolean, recycleConfirmed
 export const cancelOrganization = () => invoke('cancel_organization');
 export const openOperationRecords = () => invoke('open_operation_records');
 export const watchOrganization = (update: (plan: OrganizationPlan) => void) => listen<OrganizationPlan>('arena-organization-progress', event => update(event.payload));
+
+/** Localize readable fields only. Filenames, paths, IDs and status keys stay untouched. */
+export function organizationRecord(plan: OrganizationPlan) {
+  return { ...plan, notice: message(plan.notice), entries: plan.entries.map(entry => ({ ...entry,
+    group: t(entry.group), note: message(entry.note),
+  })) };
+}

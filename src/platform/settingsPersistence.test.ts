@@ -38,6 +38,21 @@ it('fills missing fields without overriding saved independent mute/volume choice
   expect(m.usePreference('music')[0]).toBe(true); expect(m.usePreference('effects')[0]).toBe(false);
   expect(m.usePreference('volume')[0]).toBe(7); expect(m.usePreference('theme')[0]).toBe('light');
 });
+it('keeps old settings in Chinese and persists an explicit English choice without losing other settings', async () => {
+  const data=storage([['image-arena-settings',saved({theme:'dark',volume:7,linked:false})]]);
+  let m=await import('./settings');await m.initializeSettings();expect(m.usePreference('language')[0]).toBe('zh');
+  m.setPreference('language','en');await m.flushSettings();
+  vi.resetModules();m=await import('./settings');await m.initializeSettings();
+  expect(m.usePreference('language')[0]).toBe('en');expect(m.usePreference('theme')[0]).toBe('dark');
+  expect(m.usePreference('volume')[0]).toBe(7);expect(m.usePreference('linked')[0]).toBe(false);
+  expect(JSON.parse(data.get('image-arena-settings')!).version).toBe(1);
+});
+it('preserves language in native settings updates and defaults invalid languages to Chinese', async () => {
+  storage();desktop({language:'en',music:false,volume:0});const m=await import('./settings');await m.initializeSettings();
+  expect(m.usePreference('language')[0]).toBe('en');m.setPreference('theme','dark');await m.flushSettings();
+  expect(native.invoke).toHaveBeenCalledWith('save_settings',{values:expect.objectContaining({language:'en',music:false,volume:0,theme:'dark'})});
+  expect(m.sanitize({language:'fr',volume:7}).language).toBe('zh');
+});
 it('backs up malformed settings and uses shared defaults without preventing startup', async () => {
   const data = storage([['image-arena-settings', '{"version":8}'], ['image-arena-theme', 'dark']]);
   const m = await import('./settings'); await m.initializeSettings();

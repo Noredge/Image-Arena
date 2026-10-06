@@ -2,6 +2,7 @@ node_modules/
 dist/
 test-results/
 playwright-report/
+validation/i18n/
 *.log
 .sites-runtime/
 src-tauri/target/

@@ -1,3 +1,4 @@
+import { t } from '../i18n';
 import type {TournamentMode} from '../core/tournament';
 export type SoundStage='prepare'|'battle'|'results';
 export type Cue='start'|'vote'|'undo'|'win'|'veto'|'vetoBoth'|'settle';
@@ -17,7 +18,7 @@ export class ArenaSoundtrack {
  private voices=new Map<OscillatorNode,{kind:'music'|'effects';bus:GainNode}>();private retired=new Set<GainNode>();
  private settings=initialSound;private nextBeat=0;private step=0;private lastCue=-Infinity;
  constructor(private onError:(message:string)=>void){}
- async unlock(){try{if(!this.context){this.context=new AudioContext();this.musicBus=this.context.createGain();this.effectsBus=this.context.createGain();this.musicBus.gain.value=0;this.effectsBus.gain.value=0;this.musicBus.connect(this.context.destination);this.effectsBus.connect(this.context.destination);}await this.context.resume();this.onError('');return this.context.state==='running';}catch{this.onError('声音暂时不可用；选图不受影响。');return false;}}
+ async unlock(){try{if(!this.context){this.context=new AudioContext();this.musicBus=this.context.createGain();this.effectsBus=this.context.createGain();this.musicBus.gain.value=0;this.effectsBus.gain.value=0;this.musicBus.connect(this.context.destination);this.effectsBus.connect(this.context.destination);}await this.context.resume();this.onError('');return this.context.state==='running';}catch{this.onError(t("声音暂时不可用；选图不受影响。"));return false;}}
  private level(){return this.settings.volume/100*(this.settings.stage==='battle'?.35:.65);}
  update(settings:SoundSettings){const changed=settings.mode!==this.settings.mode;this.settings=settings;const ctx=this.context;if(!ctx)return;
   const musicOn=settings.music&&!settings.paused;
@@ -26,7 +27,7 @@ export class ArenaSoundtrack {
   this.effectsBus!.gain.setTargetAtTime(settings.effects&&!settings.paused?settings.volume/100*.65:0,ctx.currentTime,.015);
   if(!musicOn){clearInterval(this.timer);this.timer=undefined;for(const [v,d]of this.voices)if(d.kind==='music')v.stop(ctx.currentTime+.06);}
   if(settings.paused)for(const v of this.voices.keys())v.stop(ctx.currentTime+.06);
-  if(musicOn&&!this.timer){this.nextBeat=ctx.currentTime+.12;this.timer=setInterval(()=>this.schedule(),100);void ctx.resume().catch(()=>this.onError('声音已开启，点击后播放。'));}
+  if(musicOn&&!this.timer){this.nextBeat=ctx.currentTime+.12;this.timer=setInterval(()=>this.schedule(),100);void ctx.resume().catch(()=>this.onError(t("声音已开启，点击后播放。")));}
  }
  private tone(midi:number,at:number,duration:number,level:number,kind:'music'|'effects',soft=false){const ctx=this.context!,v=ctx.createOscillator(),envelope=ctx.createGain(),bus=kind==='music'?this.musicBus!:this.effectsBus!;
   v.type=soft?'sine':'triangle';v.frequency.value=noteFrequency(midi);envelope.gain.setValueAtTime(0,at);envelope.gain.linearRampToValueAtTime(level,at+Math.min(soft?.09:.008,duration/3));envelope.gain.exponentialRampToValueAtTime(.0001,at+duration);v.connect(envelope);envelope.connect(bus);

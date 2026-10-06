@@ -35,5 +35,8 @@ jobs:
             LICENSE
             THIRD_PARTY_NOTICES.txt
             README.md
+            README.en.md
+            docs/RULES.md
+            docs/RULES.en.md
           if-no-files-found: error
           retention-days: 7

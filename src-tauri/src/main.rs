@@ -26,6 +26,9 @@ impl Default for DesktopState {
     } }
 }
 struct DialogGuard<'a>(&'a AtomicBool);
+fn dialog_text<'a>(language: &Option<String>, chinese: &'a str, english: &'a str) -> &'a str {
+    if language.as_deref() == Some("en") { english } else { chinese }
+}
 impl Drop for DialogGuard<'_> { fn drop(&mut self) { self.0.store(false, Ordering::SeqCst); } }
 fn dialog_lock(state: &DesktopState) -> Result<DialogGuard<'_>, String> {
     state.dialog_busy.compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst).map_err(|_| "请先完成当前文件对话框")?;
@@ -33,11 +36,11 @@ fn dialog_lock(state: &DesktopState) -> Result<DialogGuard<'_>, String> {
 }
 
 #[tauri::command]
-async fn pick_images(window: tauri::WebviewWindow, state: State<'_, DesktopState>) -> Result<ImportBatch, String> {
+async fn pick_images(window: tauri::WebviewWindow, state: State<'_, DesktopState>, language: Option<String>) -> Result<ImportBatch, String> {
     if !state.import_enabled.load(Ordering::SeqCst) { return Err("请返回准备区后导入图片".into()); }
     let _guard = dialog_lock(&state)?;
-    let chosen = rfd::AsyncFileDialog::new().set_parent(&window).set_title("请选手入场")
-        .add_filter("静态图片", &["png", "jpg", "jpeg", "webp"]).pick_files().await;
+    let chosen = rfd::AsyncFileDialog::new().set_parent(&window).set_title(dialog_text(&language, "请选手入场", "Choose your images"))
+        .add_filter(dialog_text(&language, "静态图片", "Static images"), &["png", "jpg", "jpeg", "webp"]).pick_files().await;
     if !state.import_enabled.load(Ordering::SeqCst) { return Ok(ImportBatch::default()); }
     Ok(state.registry.lock().map_err(|_| "图片登记失败")?.register(
         chosen.unwrap_or_default().into_iter().map(|f| f.path().to_owned()).collect(),
@@ -71,14 +74,14 @@ fn copy_text(text: String) -> Result<(), String> {
     arboard::Clipboard::new().and_then(|mut c| c.set_text(text)).map_err(|_| "剪贴板暂时不可用，请重试".into())
 }
 #[tauri::command]
-async fn save_record(content: String, filename: String, window: tauri::WebviewWindow, state: State<'_, DesktopState>) -> Result<bool, String> {
+async fn save_record(content: String, filename: String, window: tauri::WebviewWindow, state: State<'_, DesktopState>, language: Option<String>) -> Result<bool, String> {
     if content.len() > 8 * 1024 * 1024 { return Err("记录过大，无法保存".into()); }
     serde_json::from_str::<serde_json::Value>(&content).map_err(|_| "记录格式无效")?;
     let _guard = dialog_lock(&state)?;
     let safe_name: String = filename.chars().filter(|c| c.is_ascii_alphanumeric() || *c == '-' || *c == '.').take(100).collect();
-    let chosen = rfd::AsyncFileDialog::new().set_parent(&window).set_title("保存本轮对局记录")
+    let chosen = rfd::AsyncFileDialog::new().set_parent(&window).set_title(dialog_text(&language, "保存本轮对局记录", "Save this round's record"))
         .set_file_name(if safe_name.ends_with(".json") { &safe_name } else { "image-arena.json" })
-        .add_filter("JSON 记录", &["json"]).save_file().await;
+        .add_filter(dialog_text(&language, "JSON 记录", "JSON record"), &["json"]).save_file().await;
     let Some(file) = chosen else { return Ok(false) };
     // Never overwrite any existing file, including a selected source image.
     let mut out = OpenOptions::new().write(true).create_new(true).open(file.path())
@@ -93,12 +96,12 @@ fn close_app(window: tauri::WebviewWindow, state: State<'_, DesktopState>) -> Re
 }
 
 #[tauri::command]
-async fn pick_destination(group: preferences::Group, window: tauri::WebviewWindow, app: tauri::AppHandle, state: State<'_, DesktopState>) -> Result<Option<organize::Destination>, String> {
+async fn pick_destination(group: preferences::Group, window: tauri::WebviewWindow, app: tauri::AppHandle, state: State<'_, DesktopState>, language: Option<String>) -> Result<Option<organize::Destination>, String> {
     if state.operation_busy.load(Ordering::SeqCst) { return Err("请等待当前文件处理完成".into()); }
     let _guard = dialog_lock(&state)?;
     let file = app.path().app_local_data_dir().map_err(|e| e.to_string())?.join("destinations.json");
     let mut saved = preferences::Destinations::load(&file).unwrap_or_default();
-    let mut picker = rfd::AsyncFileDialog::new().set_parent(&window).set_title("选择图片整理目标目录");
+    let mut picker = rfd::AsyncFileDialog::new().set_parent(&window).set_title(dialog_text(&language, "选择图片整理目标目录", "Choose a destination folder"));
     if let Some(previous) = saved.get(group).filter(|d| d.path.is_dir()) { picker = picker.set_directory(&previous.path); }
     let Some(chosen) = picker.pick_folder().await else { return Ok(None) };
     let mut organizer = state.organizer.lock().map_err(|_| "整理状态不可用".to_string())?;
@@ -197,9 +200,23 @@ fn save_settings(app: tauri::AppHandle, values: serde_json::Value) -> Result<(),
     let file=app.path().app_local_data_dir().map_err(|e|e.to_string())?.join("settings.json");
     preferences::save_ui(&file,values)
 }
+#[tauri::command]
+fn set_ui_language(window: tauri::WebviewWindow, language: String) -> Result<(), String> {
+    window.set_title(if language == "en" { "Image Arena" } else { "选图擂台 · Image Arena" }).map_err(|e| e.to_string())
+}
+#[cfg(test)]
+mod localization_tests {
+    use super::dialog_text;
+    #[test]
+    fn native_dialog_labels_use_explicit_language_and_default_to_chinese() {
+        assert_eq!(dialog_text(&None, "静态图片", "Static images"), "静态图片");
+        assert_eq!(dialog_text(&Some("zh".into()), "保存本轮对局记录", "Save this round's record"), "保存本轮对局记录");
+        assert_eq!(dialog_text(&Some("en".into()), "选择图片整理目标目录", "Choose a destination folder"), "Choose a destination folder");
+    }
+}
 fn main() {
     tauri::Builder::default().manage(DesktopState::default())
-        .invoke_handler(tauri::generate_handler![read_image_chunk, load_settings, save_settings, pick_images, take_dropped_images, read_image, release_images, set_import_enabled, copy_text, save_record, close_app, pick_destination, remembered_destinations, prepare_organization, execute_organization, discard_organization, cancel_organization, open_operation_records])
+        .invoke_handler(tauri::generate_handler![set_ui_language, read_image_chunk, load_settings, save_settings, pick_images, take_dropped_images, read_image, release_images, set_import_enabled, copy_text, save_record, close_app, pick_destination, remembered_destinations, prepare_organization, execute_organization, discard_organization, cancel_organization, open_operation_records])
         .on_window_event(|window, event| {
             if let tauri::WindowEvent::DragDrop(tauri::DragDropEvent::Drop { paths, .. }) = event {
                 let app = window.app_handle().clone();

@@ -1,3 +1,4 @@
+import { t } from '../i18n';
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import type { Picture } from '../platform/browser';
 import { clampView, fitView, imageGeometry, panBy, wheelFactor, zoomAt, type ImageView } from './imageView';
@@ -55,7 +56,7 @@ export function ImageCanvas({ picture, view, onView, disabled, onLoad, onError, 
   return <div ref={canvas} className={`image-canvas ${dragging ? 'dragging' : ''}`} data-testid={testId}
     style={onTouchTap && !pinch ? { touchAction: 'pan-y' } : undefined}
     data-zoom={displayed.zoom.toFixed(5)} data-focus-x={displayed.x.toFixed(5)} data-focus-y={displayed.y.toFixed(5)}
-    role="group" aria-label={`查看图片：${picture.file.name}，滚轮缩放，按住拖动，双击恢复全图${onTouchTap ? '，触屏点图单独查看' : ''}`} tabIndex={0}
+    role="group" aria-label={t("查看图片：{0}，滚轮缩放，按住拖动，双击恢复全图{1}", [picture.file.name, onTouchTap ? t("，触屏点图单独查看") : ''])} tabIndex={0}
     onDoubleClick={() => { if (!disabled) onView(fitView()); }}
     onKeyDown={e => {
       if (disabled) return;
@@ -99,6 +100,6 @@ export function ImageCanvas({ picture, view, onView, disabled, onLoad, onError, 
     onPointerCancel={e => stopPointer(e.pointerId, e.currentTarget)} onLostPointerCapture={e => stopPointer(e.pointerId, e.currentTarget)}>
     <img src={picture.url} alt={picture.file.name} draggable={false} onLoad={onLoad} onError={onError}
       style={{ width: geometry.width, height: geometry.height, transform: `translate3d(${size.width / 2 - displayed.x * geometry.width * displayed.zoom}px, ${size.height / 2 - displayed.y * geometry.height * displayed.zoom}px, 0) scale(${displayed.zoom})` }} />
-    <span className="zoom-readout" aria-hidden="true">{displayed.zoom === 1 ? '全图' : `${displayed.zoom.toFixed(1)}×`}</span>{children}
+    <span className="zoom-readout" aria-hidden="true">{displayed.zoom === 1 ? t("全图") : `${displayed.zoom.toFixed(1)}×`}</span>{children}
   </div>;
 }

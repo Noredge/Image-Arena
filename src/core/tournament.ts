@@ -4,12 +4,13 @@ export type TournamentMode = 'ranking' | 'knockout' | 'gauntlet' | 'double' | 'g
 export const modes: TournamentMode[] = ['ranking', 'knockout', 'gauntlet', 'double', 'groups'];
 export const minimum: Record<TournamentMode, number> = { ranking: 1, knockout: 2, gauntlet: 3, double: 4, groups: 6 };
 export type SessionConfig = { imageIds: string[]; targetK: number; seed: number; mode?: TournamentMode };
-export type Match = tree.Match & { label?: string; kind?: 'group' | 'tie' | 'graph' | 'gauntlet'; group?: number; key?: string };
-export type Decision = tree.Decision & { leftId?: string; rightId?: string; label?: string };
+export type Phase = { id: 'ranking' | 'knockout' | 'gauntlet' | 'upper' | 'lower' | 'grand-final' | 'reset-final' | 'group' | 'tie'; round?: number; entrants?: number; group?: number; place?: number };
+export type Match = tree.Match & { phase?: Phase; label?: string; kind?: 'group' | 'tie' | 'graph' | 'gauntlet'; group?: number; key?: string };
+export type Decision = tree.Decision & { phase?: Phase; leftId?: string; rightId?: string; label?: string };
 export type Event = { type: 'vote'; decision: Decision } | { type: 'veto'; ids: string[] };
 export type Ranked = tree.Ranked;
 type Source = { id: string | null } | { node: number; output: 'winner' | 'loser' };
-export type Bout = { a: Source; b: Source; label: string; winner?: string | null; loser?: string | null; played?: boolean; left?: string | null; right?: string | null };
+export type Bout = { a: Source; b: Source; phase?: Phase; label: string; winner?: string | null; loser?: string | null; played?: boolean; left?: string | null; right?: string | null };
 export type Group = { members: string[]; results: Record<string, Decision>; ties: Record<string, tree.Session>; qualifiers: string[]; points: Record<string, number> };
 export type Session = {
   config: SessionConfig; layout: (string | null)[]; tree: (string | null | undefined)[];
@@ -25,28 +26,29 @@ const allowed = (s: Session, id: string | null | undefined) => id && !s.vetoed.i
 function token(s: Session, m: Match) { return JSON.stringify([s.config.seed, s.revision, s.events.length, m.kind, m.nodeId, m.key, m.leftId, m.rightId, m.rankBeingSelected]); }
 function ask(s: Session, m: Omit<Match,'id'>) { s.pending = { ...m, id: '' }; s.pending.id = token(s, s.pending); return s; }
 function finish(s: Session, id: string | null, automatic = false) { s.pending = null; s.ranked = id ? [{ imageId: id, rank: 1 }] : []; s.completed = true; s.automaticFinish = automatic; return s; }
-function graph(s: Session, leaves: (string | null)[], labelPrefix = '') {
+function graph(s: Session, leaves: (string | null)[], phase: 'upper' | 'knockout' = 'knockout') {
+  const labelPrefix = phase === 'upper' ? '胜者组 · ' : '';
   let refs: Source[] = leaves.map(id => ({ id })); const rounds: number[][] = [];
   while (refs.length > 1) {
     const row: number[] = [], label = refs.length === 2 ? '决赛' : refs.length === 4 ? '半决赛' : `${refs.length} 强赛`;
-    for (let i = 0; i < refs.length; i += 2) { row.push(s.graph.length); s.graph.push({ a: refs[i], b: refs[i+1], label: labelPrefix + label }); }
+    for (let i = 0; i < refs.length; i += 2) { row.push(s.graph.length); s.graph.push({ a: refs[i], b: refs[i+1], label: labelPrefix + label, phase: { id: phase, entrants: refs.length } }); }
     rounds.push(row); refs = row.map(node => ({ node, output: 'winner' }));
   }
   return rounds;
 }
 function doubleGraph(s: Session) {
-  const wr = graph(s, s.layout, '胜者组 · ');
+  const wr = graph(s, s.layout, 'upper');
   let lower: Source[] = [];
   for (let i = 0; i < wr[0].length; i += 2) {
-    const node = s.graph.length; s.graph.push({ a: { node: wr[0][i], output: 'loser' }, b: { node: wr[0][i+1], output: 'loser' }, label: '复活区 · 首轮' }); lower.push({ node, output:'winner' });
+    const node = s.graph.length; s.graph.push({ a: { node: wr[0][i], output: 'loser' }, b: { node: wr[0][i+1], output: 'loser' }, label: '复活区 · 首轮', phase: { id:'lower', round:1 } }); lower.push({ node, output:'winner' });
   }
   for (let r = 1; r < wr.length; r++) {
-    lower = lower.map((a, i) => { const node = s.graph.length; s.graph.push({ a, b: { node: wr[r][wr[r].length - 1 - i], output:'loser' }, label: `复活区 · 第 ${r * 2} 轮` }); return { node, output:'winner' as const }; });
-    if (r < wr.length - 1) { const next: Source[] = []; for (let i = 0; i < lower.length; i += 2) { const node = s.graph.length; s.graph.push({ a: lower[i], b: lower[i+1], label: `复活区 · 第 ${r * 2 + 1} 轮` }); next.push({ node, output:'winner' }); } lower = next; }
+    lower = lower.map((a, i) => { const node = s.graph.length; s.graph.push({ a, b: { node: wr[r][wr[r].length - 1 - i], output:'loser' }, label: `复活区 · 第 ${r * 2} 轮`, phase: { id:'lower', round:r*2 } }); return { node, output:'winner' as const }; });
+    if (r < wr.length - 1) { const next: Source[] = []; for (let i = 0; i < lower.length; i += 2) { const node = s.graph.length; s.graph.push({ a: lower[i], b: lower[i+1], label: `复活区 · 第 ${r * 2 + 1} 轮`, phase: { id:'lower', round:r*2+1 } }); next.push({ node, output:'winner' }); } lower = next; }
   }
   const a: Source = { node: wr.at(-1)![0], output: 'winner' }, b = lower[0];
-  s.finalIndex = s.graph.length; s.graph.push({ a, b, label:'总决赛' });
-  s.resetIndex = s.graph.length; s.graph.push({ a, b, label:'最终决胜局' }); s.graphKind = 'double';
+  s.finalIndex = s.graph.length; s.graph.push({ a, b, label:'总决赛', phase: { id:'grand-final' } });
+  s.resetIndex = s.graph.length; s.graph.push({ a, b, label:'最终决胜局', phase: { id:'reset-final' } }); s.graphKind = 'double';
 }
 function read(s: Session, ref: Source): string | null | undefined { if ('id' in ref) return allowed(s, ref.id); const value = s.graph[ref.node][ref.output]; return value === undefined ? undefined : allowed(s, value); }
 function advanceGraph(s: Session): Session {
@@ -58,7 +60,7 @@ function advanceGraph(s: Session): Session {
     b.left = a; b.right = c;
     if (!a || !c) { b.winner = a ?? c; b.loser = null; continue; }
     if (a === c) throw new Error('同一图片不能占据两个席位');
-    return ask(s, { nodeId: i, leftId: a, rightId: c, rankBeingSelected: 1, kind:'graph', label: b.label });
+    return ask(s, { nodeId: i, leftId: a, rightId: c, rankBeingSelected: 1, kind:'graph', label: b.label, phase: b.phase });
   }
   const last = s.graph.at(-1)!; return finish(s, allowed(s, last.winner), !last.played);
 }
@@ -78,7 +80,7 @@ function advanceGroups(s: Session): Session {
     for (const d of Object.values(g.results)) if (members.includes(d.leftId!) && members.includes(d.rightId!)) g.points[d.winnerId]++;
     for (let i=0;i<members.length;i++) for(let j=i+1;j<members.length;j++) {
       const a=members[i], b=members[j], key=pairKey(a,b), result=g.results[key];
-      if (!result) return ask(s,{nodeId:gi*100+i*10+j,leftId:a,rightId:b,rankBeingSelected:1,kind:'group',group:gi,key,label:`${groupName(gi)}组 · 循环赛`});
+      if (!result) return ask(s,{nodeId:gi*100+i*10+j,leftId:a,rightId:b,rankBeingSelected:1,kind:'group',group:gi,key,label:`${groupName(gi)}组 · 循环赛`,phase:{id:'group',group:gi}});
 
     }
     const scores=[...new Set(Object.values(g.points))].sort((a,b)=>b-a); const buckets:string[][]=[];
@@ -93,7 +95,7 @@ function advanceGroups(s: Session): Session {
       if(bucket.length===1) { g.qualifiers.push(bucket[0]); continue; }
       const key=JSON.stringify([bucket,needed]);
       const t=g.ties[key]??(g.ties[key]=tree.createSession({imageIds:bucket,targetK:needed,seed:(s.config.seed+gi)>>>0}));
-      if(t.pending) return ask(s,{...t.pending,kind:'tie',group:gi,key,label:`${groupName(gi)}组 · 出线加赛`});
+      if(t.pending) return ask(s,{...t.pending,kind:'tie',group:gi,key,label:`${groupName(gi)}组 · 出线加赛`,phase:{id:'tie',group:gi}});
       g.qualifiers.push(...t.ranked.map(r=>r.imageId));
     }
   }
@@ -111,14 +113,14 @@ function advance(s:Session):Session {
       while(t.pending) { const m=t.pending, answer=answers.get(pairKey(m.leftId,m.rightId)); if(!answer) break; t=tree.choose(t,{matchId:m.id,winnerId:answer}); }
     }
     s.ranking=t; s.tree=t.tree; s.ranked=t.ranked; s.completed=t.completed;
-    if(t.pending) ask(s,{...t.pending,label:`第 ${t.pending.rankBeingSelected} 席争夺`}); return s;
+    if(t.pending) ask(s,{...t.pending,label:`第 ${t.pending.rankBeingSelected} 席争夺`,phase:{id:'ranking',place:t.pending.rankBeingSelected}}); return s;
   }
   if(mode==='knockout') {
     for(let start=s.layout.length/2; start>=1; start/=2) for(let node=start;node<start*2;node++) {
       if(s.tree[node]!==undefined) continue;
       const a=allowed(s,s.tree[node*2]),b=allowed(s,s.tree[node*2+1]);
       if(!a||!b) {s.tree[node]=a??b;continue;}
-      return ask(s,{nodeId:node,leftId:a,rightId:b,rankBeingSelected:1});
+      return ask(s,{nodeId:node,leftId:a,rightId:b,rankBeingSelected:1,phase:{id:'knockout',entrants:2**(Math.floor(Math.log2(node))+1)}});
     }
     return finish(s,allowed(s,s.tree[1]),!s.history.length || s.events.at(-1)?.type==='veto');
   }
@@ -128,7 +130,7 @@ function advance(s:Session):Session {
     if(!s.holder && s.cursor<s.queue.length) { s.holder=s.queue[s.cursor++]; s.streak=0; }
     while(s.cursor<s.queue.length && !allowed(s,s.queue[s.cursor])) s.cursor++;
     if(s.cursor===s.queue.length) return finish(s,s.holder,s.events.at(-1)?.type==='veto');
-    return ask(s,{nodeId:s.cursor,leftId:s.holder!,rightId:s.queue[s.cursor],rankBeingSelected:1,kind:'gauntlet',label:'擂主迎战'});
+    return ask(s,{nodeId:s.cursor,leftId:s.holder!,rightId:s.queue[s.cursor],rankBeingSelected:1,kind:'gauntlet',label:'擂主迎战',phase:{id:'gauntlet'}});
   }
   return mode==='double'?advanceGraph(s):advanceGroups(s);
 }
@@ -152,7 +154,7 @@ function clone(s:Session):Session {
 export function choose(s:Session,decision:Decision):Session {
   const m=s.pending; if(!m||m.id!==decision.matchId) throw new Error('这场对决已过期');
   if(![m.leftId,m.rightId].includes(decision.winnerId)) throw new Error('胜者不属于这场对决');
-  const n=clone(s),d={...decision,leftId:m.leftId,rightId:m.rightId,label:m.label};
+  const n=clone(s),d={...decision,leftId:m.leftId,rightId:m.rightId,label:m.label,phase:m.phase};
   n.history.push(d);n.events.push({type:'vote',decision:d}); n.revision++;n.pending=null;
   const winner=d.winnerId,loser=winner===m.leftId?m.rightId:m.leftId;
   if(n.config.mode==='ranking') n.ranking=tree.choose(n.ranking!,{matchId:n.ranking!.pending!.id,winnerId:winner});
