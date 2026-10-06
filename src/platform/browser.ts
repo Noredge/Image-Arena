@@ -28,10 +28,21 @@ export async function validateFormat(file: File): Promise<void> {
   if (!png && !jpeg && !webp) throw new Error('仅支持 PNG、JPEG、WebP 静态图片；此文件格式不受支持或文件头已损坏');
   if (png) {
     let offset = 8;
+    // Dense ancillary chunks otherwise cause one asynchronous Blob read per
+    // header. Keep a small window and jump over payloads without loading them.
+    const windowSize = 64 * 1024;
+    let windowStart = 0;
+    let bytes = new Uint8Array(0);
+    let view = new DataView(bytes.buffer);
     while (offset + 8 <= file.size) {
-      const chunk = new Uint8Array(await file.slice(offset, offset + 8).arrayBuffer());
-      const type = ascii(chunk, 4, 8);
-      const chunkLength = new DataView(chunk.buffer).getUint32(0);
+      if (offset < windowStart || offset + 8 > windowStart + bytes.length) {
+        windowStart = offset;
+        bytes = new Uint8Array(await file.slice(offset, offset + windowSize).arrayBuffer());
+        view = new DataView(bytes.buffer);
+      }
+      const index = offset - windowStart;
+      const type = String.fromCharCode(bytes[index + 4], bytes[index + 5], bytes[index + 6], bytes[index + 7]);
+      const chunkLength = view.getUint32(index);
       // Reject malformed chunks before an unbounded sequence of Blob reads.
       if (!/^[A-Za-z]{4}$/.test(type) || chunkLength > file.size - offset - 12) {
         throw new Error('PNG 数据块损坏或不完整，请重新导出图片');
